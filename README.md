@@ -23,8 +23,11 @@ I tre livelli di controllo
 Il "cervello" della serra è diviso in tre livelli.
 
 L2 · Orchestratore (il direttore). È un modello linguistico open-source eseguito in locale. Sorveglia i sensori, riconosce i problemi (umidità eccessiva, piante che appassiscono, foglie che ingialliscono, energia troppo cara), consulta i dati attraverso degli "strumenti" e propone correzioni. Pianifica anche raccolti e menu e risponde in chat alle domande degli operatori.
+
 L1 · Ottimizzatore (il pianificatore). È un calcolo matematico che organizza le 24 ore successive: sposta l'accensione dei LED nelle fasce in cui l'energia costa meno o il fotovoltaico produce, garantendo comunque a ogni pianta la quantità di luce giornaliera di cui ha bisogno.
+
 L0 · Safety Gate (il responsabile della sicurezza). È un insieme di regole fisse, senza alcuna IA, che conosce i limiti fisici degli impianti e quelli biologici delle piante: almeno 6 ore di buio, CO₂ sotto i 1500 ppm, acidità e salinità entro soglie precise. Ogni comando viene accettato, ridotto entro i limiti oppure bloccato. Il Safety Gate ha sempre l'ultima parola.
+
 Il database: la memoria della serra
 Il database descrive tutto ciò che il sistema deve sapere, in un unico archivio strutturato in otto sezioni:
 la struttura fisica della serra: superfici, ripiani e zone climatiche (per colture che possono differire;
