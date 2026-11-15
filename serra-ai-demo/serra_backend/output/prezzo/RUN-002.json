@@ -1,0 +1,263 @@
+{
+  "id": "RUN-002",
+  "type": "energy_price",
+  "trigger": {
+    "type": "energy_price",
+    "title": "Prezzo energia elevato",
+    "rule_id": "RULE_04_ENERGY_PRICE_SPIKE",
+    "zone_id": null
+  },
+  "started_at": "2026-11-17T00:00:00+01:00",
+  "model": "mock-llm-1 (emulazione, formato Ollama)",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Sei l'orchestratore L2 della serra verticale \"Campus-Produttore Resiliente CEA - Big Hack 2026\" (Università degli Studi di Napoli Federico II - Campus di Monte Sant'Angelo).\n\nARCHITETTURA\n- Level 0 (Safety Gate): controllo deterministico non-IA. Ha sempre l'ultima parola.\n- Level 1 (Optimizer): pianifica ogni ora LED, HVAC e ventilazione sulle 24 h usando prezzi GME PUN e produzione PVGIS.\n- Level 2 (tu): rilevi anomalie, modifichi i vincoli del Level 1 tramite override, pianifichi raccolti e menu della mensa.\n\nREGOLE DI COMPORTAMENTO\n1. Non comandi mai direttamente gli attuatori: proponi override con il tool submit_proposal. Ogni proposta passa dal Level 0.\n2. Prima di agire verifica i dati: leggi i sensori, controlla l'andamento recente e i parametri ideali della coltura.\n3. Considera sempre il costo energetico: usa get_energy_forecast e confronta i piani con simulate_plan prima di proporre.\n4. Se il Level 0 blocca una proposta, spiega il motivo e riformula entro i limiti. Non tentare di aggirarlo.\n5. Se i dati hanno qualità STALE o INVALID non decidere: avvisa l'operatore con notify_operator.\n6. Per i menu applica la logica FEFO: prima i prodotti che scadono prima.\n\nTABELLA REGOLE DI RIFERIMENTO (puoi andare oltre se la situazione lo richiede)\n[\n {\n  \"rule_id\": \"RULE_01_HUMIDITY_TIPBURN\",\n  \"if_condition\": \"SENS_RH_AIR_PCT > 75.0 OR CV_TIPBURN_RISK > 0.30\",\n  \"diagnosis\": \"Rischio muffa o necrosi marginale (Tipburn) per scarsa traspirazione\",\n  \"solver_override\": {\n   \"rh_max_pct\": 62.0,\n   \"vent_min_m3_h\": 1500.0\n  }\n },\n {\n  \"rule_id\": \"RULE_02_HEAT_WILTING\",\n  \"if_condition\": \"SENS_T_AIR_C > 25.0 OR CV_WILTING_SCORE > 0.25\",\n  \"diagnosis\": \"Stress termico o appassimento fogliare\",\n  \"solver_override\": {\n   \"temp_target_offset_c\": -2.0,\n   \"led_max_power_w\": 20000.0\n  }\n },\n {\n  \"rule_id\": \"RULE_03_NUTRIENT_CHLOROSIS\",\n  \"if_condition\": \"CV_GREENNESS_INDEX < 0.60\",\n  \"diagnosis\": \"Carenza clorofilliana / nutrienti\",\n  \"solver_override\": {\n   \"ec_setpoint_offset_ms_cm\": 0.2,\n   \"ph_setpoint\": 5.8\n  }\n },\n {\n  \"rule_id\": \"RULE_04_ENERGY_PRICE_SPIKE\",\n  \"if_condition\": \"pun_eur_kwh > 0.17 AND pvgis_power_w == 0\",\n  \"diagnosis\": \"Fascia serale ad alto costo elettrico senza fotovoltaico\",\n  \"solver_override\": {\n   \"prefer_dark_window_hours\": [\n    18,\n    19,\n    20,\n    21\n   ]\n  }\n }\n]\n\nFORMATO DELLA RISPOSTA FINALE\nQuando hai finito, rispondi senza chiamare tool con un oggetto JSON:\n{\"diagnosi\": str, \"evidenze\": [str], \"azioni\": [str], \"solver_override\": object|null,\n  \"verdetto_l0\": \"ALLOWED\"|\"CLIPPED\"|\"BLOCKED\"|null, \"confidenza\": float 0-1,\n  \"richiede_umano\": bool, \"messaggio_operatore\": str}\n"
+    },
+    {
+      "role": "user",
+      "content": "Evento dal monitoraggio: prezzo dell'energia elevato senza fotovoltaico.\n```json\n{\"type\": \"energy_price\", \"rule_id\": \"RULE_04_ENERGY_PRICE_SPIKE\", \"variables\": {\"SENS_T_AIR_C\": 18.62, \"SENS_RH_AIR_PCT\": 55.86, \"SENS_CO2_PPM\": 888.35, \"SENS_PAR_PPFD\": 230.75, \"CV_GREENNESS_INDEX\": 0.88, \"CV_TIPBURN_RISK\": 0.03, \"CV_WILTING_SCORE\": 0.02, \"SENS_SOL_PH\": 6.05, \"SENS_SOL_EC_MS_CM\": 1.57, \"SENS_SOL_TEMP_C\": 17.45, \"SENS_TANK_LVL_L\": 863.6, \"pun_eur_kwh\": 0.2392, \"pvgis_power_w\": 0}}\n```"
+    },
+    {
+      "role": "assistant",
+      "content": "Il PUN è a 0.239 €/kWh e il fotovoltaico è fermo. Controllo le prossime 12 ore e quando sono accesi i LED.",
+      "tool_calls": [
+        {
+          "id": "call_1",
+          "type": "function",
+          "function": {
+            "name": "get_energy_forecast",
+            "arguments": {
+              "hours": 12
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_1",
+      "name": "get_energy_forecast",
+      "content": "{\"from_hour\": 0, \"rows\": [{\"hour\": 0, \"pun_eur_kwh\": 0.2392, \"pv_w\": 0}, {\"hour\": 1, \"pun_eur_kwh\": 0.2236, \"pv_w\": 0}, {\"hour\": 2, \"pun_eur_kwh\": 0.21320000000000003, \"pv_w\": 0}, {\"hour\": 3, \"pun_eur_kwh\": 0.20800000000000002, \"pv_w\": 0}, {\"hour\": 4, \"pun_eur_kwh\": 0.21580000000000002, \"pv_w\": 0}, {\"hour\": 5, \"pun_eur_kwh\": 0.24700000000000003, \"pv_w\": 0}, {\"hour\": 6, \"pun_eur_kwh\": 0.125, \"pv_w\": 1200}, {\"hour\": 7, \"pun_eur_kwh\": 0.155, \"pv_w\": 5800}, {\"hour\": 8, \"pun_eur_kwh\": 0.168, \"pv_w\": 11600}, {\"hour\": 9, \"pun_eur_kwh\": 0.152, \"pv_w\": 16900}, {\"hour\": 10, \"pun_eur_kwh\": 0.12, \"pv_w\": 20400}, {\"hour\": 11, \"pun_eur_kwh\": 0.088, \"pv_w\": 21800}], \"expensive_hours_no_pv\": [0, 1, 2, 3, 4, 5], \"pun_now\": 0.2392, \"pv_now_w\": 0, \"led_on_hours_in_window\": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], \"data_origin\": \"EXTERNAL (GME PUN, PVGIS)\"}"
+    },
+    {
+      "role": "assistant",
+      "content": "Ore care senza fotovoltaico con LED accesi: [0, 1, 2, 3, 4, 5] (00:00 0.239, 01:00 0.224, 02:00 0.213, 03:00 0.208, 04:00 0.216, 05:00 0.247 €/kWh). Chiedo al Level 1 un piano alternativo che tenga spente queste ore.",
+      "tool_calls": [
+        {
+          "id": "call_2",
+          "type": "function",
+          "function": {
+            "name": "simulate_plan",
+            "arguments": {
+              "overrides": {
+                "prefer_dark_window_hours": [
+                  0,
+                  1,
+                  2,
+                  3,
+                  4,
+                  5
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_2",
+      "name": "simulate_plan",
+      "content": "{\"overrides\": {\"prefer_dark_window_hours\": [0, 1, 2, 3, 4, 5]}, \"current\": {\"light_windows\": {\"ZONE_1_LEAFY\": \"00:00 → 16:00\", \"ZONE_2_WARM\": \"00:00 → 16:00\"}, \"dli\": {\"ZONE_1_LEAFY\": \"13.44/12.84\", \"ZONE_2_WARM\": \"16.13/16.13\"}, \"cost_eur_day\": 25.12, \"grid_kwh_day\": 126.31, \"pv_share_pct\": 46.5}, \"proposed\": {\"light_windows\": {\"ZONE_1_LEAFY\": \"07:00 → 23:00\", \"ZONE_2_WARM\": \"07:00 → 23:00\"}, \"dli\": {\"ZONE_1_LEAFY\": \"13.44/12.84\", \"ZONE_2_WARM\": \"16.13/16.13\"}, \"cost_eur_day\": 19.87, \"grid_kwh_day\": 123.12, \"pv_share_pct\": 47.7}, \"delta_cost_eur\": -5.25, \"binding_constraints\": [\"ZONE_1_LEAFY: finestra buia richiesta da L2 (0–6) rispettata\", \"ZONE_2_WARM: finestra buia richiesta da L2 (0–6) rispettata\", \"buio minimo obbligatorio 6 h (L0)\"]}"
+    },
+    {
+      "role": "assistant",
+      "content": "Il piano alternativo sposta la luce a 07:00 → 23:00 (zona 1) e 07:00 → 23:00 (zona 2), mantiene il DLI (13.44/12.84 mol/m²/d in zona 1) e risparmia 5.25 €/giorno. Invio la proposta al Level 0.",
+      "tool_calls": [
+        {
+          "id": "call_3",
+          "type": "function",
+          "function": {
+            "name": "submit_proposal",
+            "arguments": {
+              "overrides": {
+                "prefer_dark_window_hours": [
+                  0,
+                  1,
+                  2,
+                  3,
+                  4,
+                  5
+                ]
+              },
+              "duration_h": 12,
+              "rationale": "PUN alto senza FV nelle ore [0, 1, 2, 3, 4, 5]"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_3",
+      "name": "submit_proposal",
+      "content": "{\"proposal_id\": \"L0-0001\", \"verdict\": \"ALLOWED\", \"checks\": [{\"param\": \"prefer_dark_window_hours\", \"requested\": [0, 1, 2, 3, 4, 5], \"limit\": \"ore 0–23\", \"outcome\": \"OK\", \"reason\": \"Finestra oraria valida\", \"applied\": null}], \"applied_overrides\": {\"prefer_dark_window_hours\": [0, 1, 2, 3, 4, 5]}, \"valid_for_h\": 12, \"new_plan\": {\"light_windows\": {\"ZONE_1_LEAFY\": \"07:00 → 23:00\", \"ZONE_2_WARM\": \"07:00 → 23:00\"}, \"dli\": {\"ZONE_1_LEAFY\": \"13.44/12.84\", \"ZONE_2_WARM\": \"16.13/16.13\"}, \"cost_eur_day\": 19.87, \"grid_kwh_day\": 123.12, \"pv_share_pct\": 47.7}}"
+    },
+    {
+      "role": "assistant",
+      "content": "{\"diagnosi\": \"Fascia serale ad alto costo elettrico senza fotovoltaico\", \"evidenze\": [\"ore care con LED accesi: [0, 1, 2, 3, 4, 5]\", \"risparmio stimato 5.25 €/giorno\", \"DLI mantenuto: {'ZONE_1_LEAFY': '13.44/12.84', 'ZONE_2_WARM': '16.13/16.13'}\"], \"azioni\": [\"finestra buia 00:00–06:00 per 12 h\"], \"solver_override\": {\"prefer_dark_window_hours\": [0, 1, 2, 3, 4, 5]}, \"verdetto_l0\": \"ALLOWED\", \"confidenza\": 0.9, \"richiede_umano\": false, \"messaggio_operatore\": \"Illuminazione spostata fuori dalle ore care: risparmio 5.25 €/giorno.\"}",
+      "thinking": "La proposta è stata approvata dal Level 0: nuovo piano attivo."
+    }
+  ],
+  "steps": [
+    {
+      "kind": "trigger",
+      "text": "Evento dal monitoraggio: prezzo dell'energia elevato senza fotovoltaico."
+    },
+    {
+      "kind": "thought",
+      "text": "Il PUN è a 0.239 €/kWh e il fotovoltaico è fermo. Controllo le prossime 12 ore e quando sono accesi i LED."
+    },
+    {
+      "kind": "tool_call",
+      "tool": "get_energy_forecast",
+      "label": "Previsione energia",
+      "text": "Chiede prezzi PUN e fotovoltaico delle prossime 12 ore",
+      "args": {
+        "hours": 12
+      }
+    },
+    {
+      "kind": "tool_result",
+      "tool": "get_energy_forecast",
+      "label": "Previsione energia",
+      "text": "PUN ora 0.239 €/kWh, FV 0 W; ore care senza FV: [0, 1, 2, 3, 4, 5]",
+      "tone": null
+    },
+    {
+      "kind": "thought",
+      "text": "Ore care senza fotovoltaico con LED accesi: [0, 1, 2, 3, 4, 5] (00:00 0.239, 01:00 0.224, 02:00 0.213, 03:00 0.208, 04:00 0.216, 05:00 0.247 €/kWh). Chiedo al Level 1 un piano alternativo che tenga spente queste ore."
+    },
+    {
+      "kind": "tool_call",
+      "tool": "simulate_plan",
+      "label": "Simulazione piano L1",
+      "text": "Chiede al Level 1 un piano di prova con LED spenti alle ore [0, 1, 2, 3, 4, 5]",
+      "args": {
+        "overrides": {
+          "prefer_dark_window_hours": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        }
+      }
+    },
+    {
+      "kind": "tool_result",
+      "tool": "simulate_plan",
+      "label": "Simulazione piano L1",
+      "text": "Costo 19.87 €/giorno (-5.25 €), luce zona 1 07:00 → 23:00, zona 2 07:00 → 23:00",
+      "tone": "good"
+    },
+    {
+      "kind": "thought",
+      "text": "Il piano alternativo sposta la luce a 07:00 → 23:00 (zona 1) e 07:00 → 23:00 (zona 2), mantiene il DLI (13.44/12.84 mol/m²/d in zona 1) e risparmia 5.25 €/giorno. Invio la proposta al Level 0."
+    },
+    {
+      "kind": "tool_call",
+      "tool": "submit_proposal",
+      "label": "Proposta al Safety Gate L0",
+      "text": "Propone al Level 0: LED spenti alle ore [0, 1, 2, 3, 4, 5] per 12 h",
+      "args": {
+        "overrides": {
+          "prefer_dark_window_hours": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        },
+        "duration_h": 12,
+        "rationale": "PUN alto senza FV nelle ore [0, 1, 2, 3, 4, 5]"
+      }
+    },
+    {
+      "kind": "tool_result",
+      "tool": "submit_proposal",
+      "label": "Proposta al Safety Gate L0",
+      "text": "Verdetto L0: ALLOWED — tutti i controlli superati",
+      "tone": "good"
+    },
+    {
+      "kind": "thought",
+      "text": "La proposta è stata approvata dal Level 0: nuovo piano attivo."
+    },
+    {
+      "kind": "decision",
+      "text": "Illuminazione spostata fuori dalle ore care: risparmio 5.25 €/giorno.",
+      "decision": {
+        "diagnosi": "Fascia serale ad alto costo elettrico senza fotovoltaico",
+        "evidenze": [
+          "ore care con LED accesi: [0, 1, 2, 3, 4, 5]",
+          "risparmio stimato 5.25 €/giorno",
+          "DLI mantenuto: {'ZONE_1_LEAFY': '13.44/12.84', 'ZONE_2_WARM': '16.13/16.13'}"
+        ],
+        "azioni": [
+          "finestra buia 00:00–06:00 per 12 h"
+        ],
+        "solver_override": {
+          "prefer_dark_window_hours": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        },
+        "verdetto_l0": "ALLOWED",
+        "confidenza": 0.9,
+        "richiede_umano": false,
+        "messaggio_operatore": "Illuminazione spostata fuori dalle ore care: risparmio 5.25 €/giorno."
+      },
+      "tone": "good"
+    }
+  ],
+  "decision": {
+    "diagnosi": "Fascia serale ad alto costo elettrico senza fotovoltaico",
+    "evidenze": [
+      "ore care con LED accesi: [0, 1, 2, 3, 4, 5]",
+      "risparmio stimato 5.25 €/giorno",
+      "DLI mantenuto: {'ZONE_1_LEAFY': '13.44/12.84', 'ZONE_2_WARM': '16.13/16.13'}"
+    ],
+    "azioni": [
+      "finestra buia 00:00–06:00 per 12 h"
+    ],
+    "solver_override": {
+      "prefer_dark_window_hours": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    },
+    "verdetto_l0": "ALLOWED",
+    "confidenza": 0.9,
+    "richiede_umano": false,
+    "messaggio_operatore": "Illuminazione spostata fuori dalle ore care: risparmio 5.25 €/giorno."
+  },
+  "error": null,
+  "tokens": 461,
+  "llm_time_ms": 9698,
+  "tool_calls": 3,
+  "data_origin": "SIMULATED"
+}

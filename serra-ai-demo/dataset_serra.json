@@ -1,0 +1,310 @@
+{
+  "metadata": {
+    "project_name": "Campus-Produttore Resiliente CEA - Big Hack 2026",
+    "site": "Università degli Studi di Napoli Federico II - Campus di Monte Sant'Angelo",
+    "coordinates": { "lat": 40.8385, "lon": 14.1852, "elevation_m": 122 },
+    "ai_architecture": {
+      "level_2_orchestrator": "Single LLM Orchestrator (monitors anomalies, updates solver bounds, plans Campanian/ADISURC canteen menus)",
+      "level_1_optimizer": "Fast Mathematical Solver (schedules hourly LED/HVAC/Ventilation over 24h using PVGIS + GME PUN)",
+      "level_0_safety_gate": "Deterministic Safe Action Gate (non-AI hard physical and biological clipping)"
+    }
+  },
+
+  "1_greenhouse_configuration": {
+    "floor_area_m2": 50.0,
+    "num_levels": 4,
+    "usable_area_per_level_m2": 35.0,
+    "total_cultivated_area_m2": 140.0,
+    "shelf_height_clearance_m": 0.65,
+    "total_air_volume_m3": 175.0,
+    "zones": [
+      { "zone_id": "ZONE_1_LEAFY", "levels": [1, 2, 3], "area_m2": 105.0, "crops_allowed": ["lattuga", "spinacio", "rucola"] },
+      { "zone_id": "ZONE_2_WARM", "levels": [4], "area_m2": 35.0, "crops_allowed": ["basilico", "pomodoro"] }
+    ]
+  },
+
+  "2_crops_and_storage_catalog": [
+    {
+      "crop_id": "lattuga",
+      "name": "Lattuga Cappuccina / Gentile",
+      "zone_id": "ZONE_1_LEAFY",
+      "density_plants_m2": 32,
+      "cycle_days": 28,
+      "yield_kg_m2": 4.2,
+      "total_shelf_yield_kg": 147.0,
+      "ideal_params": {
+        "temp_opt_c": 20.0,
+        "temp_min_max_c": [10.0, 28.0],
+        "rh_min_max_pct": [60.0, 75.0],
+        "ppfd_umol_m2_s": 220.0,
+        "photoperiod_h": 16,
+        "dli_target_mol_m2_d": 12.67,
+        "ph_range": [5.5, 6.5],
+        "ec_range_ms_cm": [1.2, 1.8]
+      },
+      "post_harvest_storage": {
+        "optimal_fridge_temp_c": 4.0,
+        "max_storage_days": 5,
+        "edible_fraction_after_trimming": 0.95
+      }
+    },
+    {
+      "crop_id": "spinacio",
+      "name": "Spinacio Novello",
+      "zone_id": "ZONE_1_LEAFY",
+      "density_plants_m2": 45,
+      "cycle_days": 25,
+      "yield_kg_m2": 3.5,
+      "total_shelf_yield_kg": 122.5,
+      "ideal_params": {
+        "temp_opt_c": 18.5,
+        "temp_min_max_c": [8.0, 26.0],
+        "rh_min_max_pct": [60.0, 70.0],
+        "ppfd_umol_m2_s": 250.0,
+        "photoperiod_h": 14,
+        "dli_target_mol_m2_d": 12.60,
+        "ph_range": [6.0, 7.0],
+        "ec_range_ms_cm": [1.8, 2.3]
+      },
+      "post_harvest_storage": {
+        "optimal_fridge_temp_c": 4.0,
+        "max_storage_days": 4,
+        "edible_fraction_after_trimming": 0.96
+      }
+    },
+    {
+      "crop_id": "rucola",
+      "name": "Rucola Selvatica della Piana",
+      "zone_id": "ZONE_1_LEAFY",
+      "density_plants_m2": 50,
+      "cycle_days": 22,
+      "yield_kg_m2": 2.8,
+      "total_shelf_yield_kg": 98.0,
+      "ideal_params": {
+        "temp_opt_c": 20.0,
+        "temp_min_max_c": [9.0, 27.0],
+        "rh_min_max_pct": [55.0, 70.0],
+        "ppfd_umol_m2_s": 230.0,
+        "photoperiod_h": 16,
+        "dli_target_mol_m2_d": 13.25,
+        "ph_range": [5.8, 6.8],
+        "ec_range_ms_cm": [1.5, 2.0]
+      },
+      "post_harvest_storage": {
+        "optimal_fridge_temp_c": 4.0,
+        "max_storage_days": 4,
+        "edible_fraction_after_trimming": 0.98
+      }
+    },
+    {
+      "crop_id": "basilico",
+      "name": "Basilico Napoletano a Foglia Larga",
+      "zone_id": "ZONE_2_WARM",
+      "density_plants_m2": 36,
+      "cycle_days": 24,
+      "yield_kg_m2": 3.0,
+      "total_shelf_yield_kg": 105.0,
+      "ideal_params": {
+        "temp_opt_c": 24.0,
+        "temp_min_max_c": [14.0, 32.0],
+        "rh_min_max_pct": [60.0, 75.0],
+        "ppfd_umol_m2_s": 280.0,
+        "photoperiod_h": 16,
+        "dli_target_mol_m2_d": 16.13,
+        "ph_range": [5.5, 6.5],
+        "ec_range_ms_cm": [1.4, 2.0]
+      },
+      "post_harvest_storage": {
+        "optimal_fridge_temp_c": 10.0,
+        "max_storage_days": 3,
+        "edible_fraction_after_trimming": 0.92
+      }
+    },
+    {
+      "crop_id": "pomodoro",
+      "name": "Pomodorino tipo Corbarino / Del Piennolo (Cultivar Micro-Dwarf)",
+      "zone_id": "ZONE_2_WARM",
+      "density_plants_m2": 12,
+      "cycle_days": 75,
+      "yield_kg_m2": 8.5,
+      "total_shelf_yield_kg": 297.5,
+      "ideal_params": {
+        "temp_opt_c": 24.0,
+        "temp_min_max_c": [12.0, 33.0],
+        "rh_min_max_pct": [55.0, 70.0],
+        "ppfd_umol_m2_s": 400.0,
+        "photoperiod_h": 16,
+        "dli_target_mol_m2_d": 23.04,
+        "ph_range": [5.5, 6.3],
+        "ec_range_ms_cm": [2.2, 3.5]
+      },
+      "post_harvest_storage": {
+        "optimal_fridge_temp_c": 12.0,
+        "max_storage_days": 7,
+        "edible_fraction_after_trimming": 0.97
+      }
+    }
+  ],
+
+  "3_shelves_initial_state_options": {
+    "mode_A_zero_start": [
+      { "level": 1, "crop_id": "lattuga",  "day_of_cycle": 0, "harvestable_biomass_kg": 0.0, "days_to_harvest": 28, "status": "JUST_TRANSPLANTED" },
+      { "level": 2, "crop_id": "spinacio", "day_of_cycle": 0, "harvestable_biomass_kg": 0.0, "days_to_harvest": 25, "status": "JUST_TRANSPLANTED" },
+      { "level": 3, "crop_id": "rucola",   "day_of_cycle": 0, "harvestable_biomass_kg": 0.0, "days_to_harvest": 22, "status": "JUST_TRANSPLANTED" },
+      { "level": 4, "crop_id": "basilico", "day_of_cycle": 0, "harvestable_biomass_kg": 0.0, "days_to_harvest": 24, "status": "JUST_TRANSPLANTED" }
+    ],
+    "mode_B_operational_steady_state": [
+      { "level": 1, "crop_id": "lattuga",  "day_of_cycle": 25, "harvestable_biomass_kg": 131.0, "days_to_harvest": 3,  "status": "NEAR_HARVEST" },
+      { "level": 2, "crop_id": "spinacio", "day_of_cycle": 15, "harvestable_biomass_kg": 73.5,  "days_to_harvest": 10, "status": "GROWING" },
+      { "level": 3, "crop_id": "rucola",   "day_of_cycle": 22, "harvestable_biomass_kg": 98.0,  "days_to_harvest": 0,  "status": "READY_TODAY" },
+      { "level": 4, "crop_id": "basilico", "day_of_cycle": 21, "harvestable_biomass_kg": 92.0,  "days_to_harvest": 3,  "status": "NEAR_HARVEST" }
+    ]
+  },
+
+  "4_sensors_and_actuators_config": {
+    "initial_sensor_readings_t0": {
+      "SENS_T_AIR_C": 19.5,
+      "SENS_RH_AIR_PCT": 66.0,
+      "SENS_CO2_PPM": 850.0,
+      "SENS_PAR_PPFD": 220.0,
+      "SENS_SOL_PH": 6.0,
+      "SENS_SOL_EC_MS_CM": 1.6,
+      "SENS_SOL_TEMP_C": 19.0,
+      "SENS_TANK_LVL_L": 950.0,
+      "CV_GREENNESS_INDEX": 0.88,
+      "CV_TIPBURN_RISK": 0.05,
+      "CV_WILTING_SCORE": 0.02
+    },
+    "actuator_hardware_limits_level0": {
+      "led_max_power_w": 25000.0,
+      "led_efficacy_umol_j": 2.7,
+      "hvac_max_heating_w": 15000.0,
+      "hvac_max_cooling_w": 25000.0,
+      "hvac_cop": 3.2,
+      "vent_min_max_m3_h": [150.0, 3500.0],
+      "irrigation_max_l_min": 45.0,
+      "co2_max_ppm_cutoff": 1500.0,
+      "ph_hard_safety_bounds": [5.2, 7.2],
+      "ec_hard_safety_max_ms_cm": 3.8,
+      "mandatory_min_dark_hours": 6
+    },
+    "simple_solver_config": {
+      "horizon_hours": 24,
+      "weights": {
+        "weight_energy_saving": 0.50,
+        "weight_climate_comfort": 0.35,
+        "weight_light_dli_target": 0.15
+      }
+    }
+  },
+
+  "5_llm_orchestrator_mapping_table": [
+    {
+      "rule_id": "RULE_01_HUMIDITY_TIPBURN",
+      "if_condition": "SENS_RH_AIR_PCT > 75.0 OR CV_TIPBURN_RISK > 0.30",
+      "diagnosis": "Rischio muffa o necrosi marginale (Tipburn) per scarsa traspirazione",
+      "solver_override": { "rh_max_pct": 62.0, "vent_min_m3_h": 1500.0 }
+    },
+    {
+      "rule_id": "RULE_02_HEAT_WILTING",
+      "if_condition": "SENS_T_AIR_C > 25.0 OR CV_WILTING_SCORE > 0.25",
+      "diagnosis": "Stress termico o appassimento fogliare",
+      "solver_override": { "temp_target_offset_c": -2.0, "led_max_power_w": 20000.0 }
+    },
+    {
+      "rule_id": "RULE_03_NUTRIENT_CHLOROSIS",
+      "if_condition": "CV_GREENNESS_INDEX < 0.60",
+      "diagnosis": "Carenza clorofilliana / nutrienti",
+      "solver_override": { "ec_setpoint_offset_ms_cm": 0.2, "ph_setpoint": 5.8 }
+    },
+    {
+      "rule_id": "RULE_04_ENERGY_PRICE_SPIKE",
+      "if_condition": "pun_eur_kwh > 0.17 AND pvgis_power_w == 0",
+      "diagnosis": "Fascia serale ad alto costo elettrico senza fotovoltaico",
+      "solver_override": { "prefer_dark_window_hours": [18, 19, 20, 21] }
+    }
+  ],
+
+  "6_verified_naples_public_datasets_costs_and_climate": {
+    "water_tariff_abc_napoli": {
+      "provider": "ABC Napoli (Acqua Bene Comune - Azienda Speciale Comune di Napoli)",
+      "reference": "Adeguamento tariffario Comune di Napoli / ARERA 2025-2026",
+      "unit_cost_eur_m3": 1.54,
+      "unit_cost_eur_liter": 0.00154,
+      "cea_water_use_l_per_kg_yield": 18.0,
+      "open_field_campania_benchmark_l_per_kg": 250.0,
+      "water_cost_per_kg_yield_eur": 0.028
+    },
+    "agronomic_inputs_cciia_napoli": {
+      "hydroponic_salts_ab_eur_per_kg_yield": 0.18,
+      "seeds_and_biodegradable_plugs_eur_per_kg_yield": 0.22,
+      "co2_enrichment_eur_per_kg_yield": 0.05,
+      "total_non_electric_production_cost_eur_kg": 0.48
+    },
+    "ismea_campania_market_prices_eur_kg": {
+      "lattuga":  { "wholesale_raw_eur_kg": 1.65, "washed_ready_to_eat_canteen_eur_kg": 3.40 },
+      "spinacio": { "wholesale_raw_eur_kg": 2.10, "washed_ready_to_eat_canteen_eur_kg": 4.20 },
+      "rucola":   { "wholesale_raw_eur_kg": 3.20, "washed_ready_to_eat_canteen_eur_kg": 5.80 },
+      "basilico": { "wholesale_raw_eur_kg": 6.50, "washed_ready_to_eat_canteen_eur_kg": 9.50 },
+      "pomodoro": { "wholesale_raw_eur_kg": 2.40, "washed_ready_to_eat_canteen_eur_kg": 3.10 }
+    },
+    "typical_24h_naples_autumn_profile": {
+      "temp_ext_era5_c": [15.4,15.0,14.7,14.5,14.6,14.9,15.6,16.8,18.2,19.6,20.8,21.7,22.4,22.7,22.5,21.8,20.7,19.5,18.4,17.6,17.0,16.5,16.0,15.7],
+      "rh_ext_era5_pct": [76.0,77.5,78.5,79.0,78.5,77.0,74.5,71.0,67.0,63.5,60.0,58.0,56.5,56.0,57.0,59.5,63.0,66.5,69.5,71.5,73.0,74.0,75.0,75.5],
+      "pvgis_25kwp_power_w": [0,0,0,0,0,0,1200,5800,11600,16900,20400,21800,21500,19200,14800,9100,3400,300,0,0,0,0,0,0],
+      "gme_pun_eur_kwh": [0.092,0.086,0.082,0.080,0.083,0.095,0.125,0.155,0.168,0.152,0.120,0.088,0.074,0.072,0.080,0.105,0.138,0.165,0.184,0.188,0.172,0.142,0.115,0.098]
+    }
+  },
+
+  "7_canteen_demand_and_campanian_menu": {
+    "canteen_name": "Polo Ristorazione Universitaria Monte Sant'Angelo (ADISURC & Tradizione Campana)",
+    "annual_meals_target": 59595,
+    "active_days_per_year": 220,
+    "daily_meals_average": 271,
+    "daily_meals_full_semester": 345,
+    "recipes_catalog": [
+      {
+        "recipe_id": "CAMP_01",
+        "dish_name": "Scarpariello Napoletano con Pomodorini freschi e Basilico a foglia larga",
+        "course": "Primo Piatto Tradizionale Campano",
+        "greenhouse_ingredients_g_per_portion": { "pomodoro": 90.0, "basilico": 10.0 },
+        "territorial_link": "Valorizza il pomodorino fresco e il basilico napoletano a km zero al posto della polpa in latta"
+      },
+      {
+        "recipe_id": "CAMP_02",
+        "dish_name": "Gnocchi alla Sorrentina con Pomodorino fresco, Fiordilatte e Basilico del Campus",
+        "course": "Primo Piatto Tradizionale Campano",
+        "greenhouse_ingredients_g_per_portion": { "pomodoro": 80.0, "basilico": 8.0 },
+        "territorial_link": "Classico della cucina campana per i menù mensa del giovedì"
+      },
+      {
+        "recipe_id": "CAMP_03",
+        "dish_name": "Caprese Campana con Mozzarella, Pomodorini, Rucola selvatica e Origano/Basilico",
+        "course": "Secondo Piatto Fresco",
+        "greenhouse_ingredients_g_per_portion": { "pomodoro": 100.0, "rucola": 30.0, "basilico": 5.0 },
+        "territorial_link": "Abbina i latticini campani agli ortaggi idroponici raccolti in giornata"
+      },
+      {
+        "recipe_id": "CAMP_04",
+        "dish_name": "Polpette o Salsiccia con contorno di Spinacino novello saltato aglio e olio",
+        "course": "Secondo + Contorno Campano",
+        "greenhouse_ingredients_g_per_portion": { "spinacio": 85.0 },
+        "territorial_link": "Alternativa fresca a ciclo rapido (25 gg) ai contorni invernali surgelati"
+      },
+      {
+        "recipe_id": "CAMP_05",
+        "dish_name": "Insalata Fresca Flegrea (Lattuga tenera e Rucola con scaglie di Provolone del Monaco)",
+        "course": "Contorno Giornaliero Mensa",
+        "greenhouse_ingredients_g_per_portion": { "lattuga": 55.0, "rucola": 25.0 },
+        "territorial_link": "Copre il fabbisogno quotidiano di IV gamma (~16.5 kg/giorno) azzerando la plastica delle buste"
+      },
+      {
+        "recipe_id": "CAMP_06",
+        "dish_name": "Pasta al Pesto Fresco di Basilico Napoletano e Pinoli",
+        "course": "Primo Piatto Veloce",
+        "greenhouse_ingredients_g_per_portion": { "basilico": 22.0 },
+        "territorial_link": "Assorbe i picchi di produzione dello scaffale 4 (Basilico) con altissimo valore economico (9.50 €/kg)"
+      }
+    ]
+  }
+}

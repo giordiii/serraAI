@@ -1,0 +1,403 @@
+{
+  "id": "RUN-002",
+  "type": "rule_anomaly",
+  "trigger": {
+    "type": "rule_anomaly",
+    "title": "Stress termico · ZONE_2_WARM",
+    "rule_id": "RULE_02_HEAT_WILTING",
+    "zone_id": "ZONE_2_WARM"
+  },
+  "started_at": "2026-11-16T11:45:00+01:00",
+  "model": "mock-llm-1 (emulazione, formato Ollama)",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Sei l'orchestratore L2 della serra verticale \"Campus-Produttore Resiliente CEA - Big Hack 2026\" (Università degli Studi di Napoli Federico II - Campus di Monte Sant'Angelo).\n\nARCHITETTURA\n- Level 0 (Safety Gate): controllo deterministico non-IA. Ha sempre l'ultima parola.\n- Level 1 (Optimizer): pianifica ogni ora LED, HVAC e ventilazione sulle 24 h usando prezzi GME PUN e produzione PVGIS.\n- Level 2 (tu): rilevi anomalie, modifichi i vincoli del Level 1 tramite override, pianifichi raccolti e menu della mensa.\n\nREGOLE DI COMPORTAMENTO\n1. Non comandi mai direttamente gli attuatori: proponi override con il tool submit_proposal. Ogni proposta passa dal Level 0.\n2. Prima di agire verifica i dati: leggi i sensori, controlla l'andamento recente e i parametri ideali della coltura.\n3. Considera sempre il costo energetico: usa get_energy_forecast e confronta i piani con simulate_plan prima di proporre.\n4. Se il Level 0 blocca una proposta, spiega il motivo e riformula entro i limiti. Non tentare di aggirarlo.\n5. Se i dati hanno qualità STALE o INVALID non decidere: avvisa l'operatore con notify_operator.\n6. Per i menu applica la logica FEFO: prima i prodotti che scadono prima.\n\nTABELLA REGOLE DI RIFERIMENTO (puoi andare oltre se la situazione lo richiede)\n[\n {\n  \"rule_id\": \"RULE_01_HUMIDITY_TIPBURN\",\n  \"if_condition\": \"SENS_RH_AIR_PCT > 75.0 OR CV_TIPBURN_RISK > 0.30\",\n  \"diagnosis\": \"Rischio muffa o necrosi marginale (Tipburn) per scarsa traspirazione\",\n  \"solver_override\": {\n   \"rh_max_pct\": 62.0,\n   \"vent_min_m3_h\": 1500.0\n  }\n },\n {\n  \"rule_id\": \"RULE_02_HEAT_WILTING\",\n  \"if_condition\": \"SENS_T_AIR_C > 25.0 OR CV_WILTING_SCORE > 0.25\",\n  \"diagnosis\": \"Stress termico o appassimento fogliare\",\n  \"solver_override\": {\n   \"temp_target_offset_c\": -2.0,\n   \"led_max_power_w\": 20000.0\n  }\n },\n {\n  \"rule_id\": \"RULE_03_NUTRIENT_CHLOROSIS\",\n  \"if_condition\": \"CV_GREENNESS_INDEX < 0.60\",\n  \"diagnosis\": \"Carenza clorofilliana / nutrienti\",\n  \"solver_override\": {\n   \"ec_setpoint_offset_ms_cm\": 0.2,\n   \"ph_setpoint\": 5.8\n  }\n },\n {\n  \"rule_id\": \"RULE_04_ENERGY_PRICE_SPIKE\",\n  \"if_condition\": \"pun_eur_kwh > 0.17 AND pvgis_power_w == 0\",\n  \"diagnosis\": \"Fascia serale ad alto costo elettrico senza fotovoltaico\",\n  \"solver_override\": {\n   \"prefer_dark_window_hours\": [\n    18,\n    19,\n    20,\n    21\n   ]\n  }\n }\n]\n\nFORMATO DELLA RISPOSTA FINALE\nQuando hai finito, rispondi senza chiamare tool con un oggetto JSON:\n{\"diagnosi\": str, \"evidenze\": [str], \"azioni\": [str], \"solver_override\": object|null,\n  \"verdetto_l0\": \"ALLOWED\"|\"CLIPPED\"|\"BLOCKED\"|null, \"confidenza\": float 0-1,\n  \"richiede_umano\": bool, \"messaggio_operatore\": str}\n"
+    },
+    {
+      "role": "user",
+      "content": "Evento dal monitoraggio: una regola della tabella è stata attivata.\n```json\n{\"type\": \"rule_anomaly\", \"rule_id\": \"RULE_02_HEAT_WILTING\", \"zone_id\": \"ZONE_2_WARM\", \"variables\": {\"SENS_T_AIR_C\": 25.17, \"SENS_RH_AIR_PCT\": 67.66, \"SENS_CO2_PPM\": 830.31, \"SENS_PAR_PPFD\": 282.98, \"CV_GREENNESS_INDEX\": 0.88, \"CV_TIPBURN_RISK\": 0.05, \"CV_WILTING_SCORE\": 0.02, \"SENS_SOL_PH\": 6.05, \"SENS_SOL_EC_MS_CM\": 1.57, \"SENS_SOL_TEMP_C\": 19.1, \"SENS_TANK_LVL_L\": 907.7, \"pun_eur_kwh\": 0.088, \"pvgis_power_w\": 21575}}\n```"
+    },
+    {
+      "role": "assistant",
+      "content": "È scattata la regola RULE_02_HEAT_WILTING (stress termico o appassimento fogliare) nella Zona 2 · Calda (ripiano 4). Prima di agire verifico le misure attuali.",
+      "tool_calls": [
+        {
+          "id": "call_1",
+          "type": "function",
+          "function": {
+            "name": "read_sensors",
+            "arguments": {
+              "zone_id": "ZONE_2_WARM"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_1",
+      "name": "read_sensors",
+      "content": "{\"zone_id\": \"ZONE_2_WARM\", \"at\": \"2026-11-16T11:45:00+01:00\", \"readings\": {\"SENS_T_AIR_C\": 25.17, \"SENS_RH_AIR_PCT\": 67.66, \"SENS_CO2_PPM\": 830.31, \"SENS_PAR_PPFD\": 282.98, \"CV_GREENNESS_INDEX\": 0.88, \"CV_TIPBURN_RISK\": 0.05, \"CV_WILTING_SCORE\": 0.02, \"SENS_SOL_PH\": 6.05, \"SENS_SOL_EC_MS_CM\": 1.57, \"SENS_SOL_TEMP_C\": 19.1, \"SENS_TANK_LVL_L\": 907.7}, \"crops\": [\"basilico\"], \"quality\": \"VALID\", \"data_origin\": \"SIMULATED\"}"
+    },
+    {
+      "role": "assistant",
+      "content": "Temperatura 25.17°C, indice di appassimento 0.02. Controllo l'andamento delle ultime 3 ore per capire se è un picco isolato o una tendenza.",
+      "tool_calls": [
+        {
+          "id": "call_2",
+          "type": "function",
+          "function": {
+            "name": "get_sensor_history",
+            "arguments": {
+              "sensor": "SENS_T_AIR_C",
+              "zone_id": "ZONE_2_WARM",
+              "hours": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_2",
+      "name": "get_sensor_history",
+      "content": "{\"sensor\": \"SENS_T_AIR_C\", \"zone_id\": \"ZONE_2_WARM\", \"hours\": 3, \"first\": 23.99, \"last\": 25.17, \"min\": 23.99, \"max\": 25.17, \"delta\": 1.17, \"trend\": \"in aumento\", \"samples\": 13}"
+    },
+    {
+      "role": "assistant",
+      "content": "Il valore è in aumento (da 23.99 a 25.17°C in 3 ore): non è un picco isolato. In questa zona la coltura più sensibile è Basilico Napoletano a Foglia Larga: verifico i suoi parametri ideali.",
+      "tool_calls": [
+        {
+          "id": "call_3",
+          "type": "function",
+          "function": {
+            "name": "get_crop_targets",
+            "arguments": {
+              "crop_id": "basilico"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_3",
+      "name": "get_crop_targets",
+      "content": "{\"crop_id\": \"basilico\", \"name\": \"Basilico Napoletano a Foglia Larga\", \"temp_opt_c\": 24.0, \"temp_min_max_c\": [14.0, 32.0], \"rh_min_max_pct\": [60.0, 75.0], \"ppfd_umol_m2_s\": 280.0, \"photoperiod_h\": 16, \"dli_target_mol_m2_d\": 16.13, \"ph_range\": [5.5, 6.5], \"ec_range_ms_cm\": [1.4, 2.0], \"cycle_days\": 24}"
+    },
+    {
+      "role": "assistant",
+      "content": "Confermato: l'ottimo per Basilico Napoletano a Foglia Larga è 24.0 °C: siamo +1.2 °C sopra. La correzione suggerita dalla tabella ({\"temp_target_offset_c\": -2.0, \"led_max_power_w\": 20000.0}) cambia i consumi, quindi controllo prezzo dell'energia e fotovoltaico delle prossime ore.",
+      "tool_calls": [
+        {
+          "id": "call_4",
+          "type": "function",
+          "function": {
+            "name": "get_energy_forecast",
+            "arguments": {
+              "hours": 6
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_4",
+      "name": "get_energy_forecast",
+      "content": "{\"from_hour\": 11, \"rows\": [{\"hour\": 11, \"pun_eur_kwh\": 0.088, \"pv_w\": 21800}, {\"hour\": 12, \"pun_eur_kwh\": 0.074, \"pv_w\": 21500}, {\"hour\": 13, \"pun_eur_kwh\": 0.072, \"pv_w\": 19200}, {\"hour\": 14, \"pun_eur_kwh\": 0.08, \"pv_w\": 14800}, {\"hour\": 15, \"pun_eur_kwh\": 0.105, \"pv_w\": 9100}, {\"hour\": 16, \"pun_eur_kwh\": 0.138, \"pv_w\": 3400}], \"expensive_hours_no_pv\": [], \"pun_now\": 0.088, \"pv_now_w\": 21800, \"led_on_hours_in_window\": [11, 12, 13, 14, 15], \"data_origin\": \"EXTERNAL (GME PUN, PVGIS)\"}"
+    },
+    {
+      "role": "assistant",
+      "content": "PUN attuale 0.088 €/kWh, fotovoltaico 21800 W (copre parte del carico). Chiedo al Level 1 di simulare il piano con l'override prima di proporlo.",
+      "tool_calls": [
+        {
+          "id": "call_5",
+          "type": "function",
+          "function": {
+            "name": "simulate_plan",
+            "arguments": {
+              "overrides": {
+                "temp_target_offset_c": -2.0,
+                "led_max_power_w": 20000.0
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_5",
+      "name": "simulate_plan",
+      "content": "{\"overrides\": {\"temp_target_offset_c\": -2.0, \"led_max_power_w\": 20000.0}, \"current\": {\"light_windows\": {\"ZONE_1_LEAFY\": \"00:00 → 16:00\", \"ZONE_2_WARM\": \"00:00 → 16:00\"}, \"dli\": {\"ZONE_1_LEAFY\": \"13.44/12.84\", \"ZONE_2_WARM\": \"16.13/16.13\"}, \"cost_eur_day\": 12.75, \"grid_kwh_day\": 126.31, \"pv_share_pct\": 46.5}, \"proposed\": {\"light_windows\": {\"ZONE_1_LEAFY\": \"00:00 → 16:00\", \"ZONE_2_WARM\": \"00:00 → 16:00\"}, \"dli\": {\"ZONE_1_LEAFY\": \"13.44/12.84\", \"ZONE_2_WARM\": \"16.13/16.13\"}, \"cost_eur_day\": 11.9, \"grid_kwh_day\": 119.22, \"pv_share_pct\": 48.6}, \"delta_cost_eur\": -0.85, \"binding_constraints\": [\"buio minimo obbligatorio 6 h (L0)\"]}"
+    },
+    {
+      "role": "assistant",
+      "content": "Il piano simulato costa -0.85 €/giorno rispetto a quello attuale (11.90 € contro 12.75 €). È un costo contenuto rispetto al rischio di stress termico e appassimento. Invio la proposta al Safety Gate L0 per 6 ore.",
+      "tool_calls": [
+        {
+          "id": "call_6",
+          "type": "function",
+          "function": {
+            "name": "submit_proposal",
+            "arguments": {
+              "overrides": {
+                "temp_target_offset_c": -2.0,
+                "led_max_power_w": 20000.0
+              },
+              "duration_h": 6,
+              "rationale": "Stress termico o appassimento fogliare: temperatura 25.17°C, indice di appassimento 0.02"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_6",
+      "name": "submit_proposal",
+      "content": "{\"proposal_id\": \"L0-0001\", \"verdict\": \"ALLOWED\", \"checks\": [{\"param\": \"led_max_power_w\", \"requested\": 20000.0, \"limit\": \"≤ 25000 W\", \"outcome\": \"OK\", \"reason\": \"Entro i limiti\", \"applied\": null}, {\"param\": \"temp_target_offset_c\", \"requested\": -2.0, \"limit\": \"-8.0…+5.0 °C\", \"outcome\": \"OK\", \"reason\": \"Entro i range colturali\", \"applied\": null}], \"applied_overrides\": {\"temp_target_offset_c\": -2.0, \"led_max_power_w\": 20000.0}, \"valid_for_h\": 6, \"new_plan\": {\"light_windows\": {\"ZONE_1_LEAFY\": \"00:00 → 16:00\", \"ZONE_2_WARM\": \"00:00 → 16:00\"}, \"dli\": {\"ZONE_1_LEAFY\": \"13.44/12.84\", \"ZONE_2_WARM\": \"16.13/16.13\"}, \"cost_eur_day\": 11.9, \"grid_kwh_day\": 119.22, \"pv_share_pct\": 48.6}}"
+    },
+    {
+      "role": "assistant",
+      "content": "La proposta è stata approvata dal Level 0 (ALLOWED). Avviso l'operatore così l'intervento resta tracciato.",
+      "tool_calls": [
+        {
+          "id": "call_7",
+          "type": "function",
+          "function": {
+            "name": "notify_operator",
+            "arguments": {
+              "severity": "warning",
+              "message": "Stress termico o appassimento fogliare in Zona 2 · Calda (ripiano 4): temperatura 25.17°C. Override applicato per 6 h (L0: ALLOWED)."
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_7",
+      "name": "notify_operator",
+      "content": "{\"event_id\": \"EVT-0003\", \"delivered\": true}"
+    },
+    {
+      "role": "assistant",
+      "content": "{\"diagnosi\": \"Stress termico o appassimento fogliare\", \"evidenze\": [\"temperatura 25.17°C (in aumento, 23.99→25.17 in 3 h)\", \"indice di appassimento 0.02\", \"l'ottimo per Basilico Napoletano a Foglia Larga è 24.0 °C: siamo +1.2 °C sopra\"], \"azioni\": [\"override al Level 1: {\\\"temp_target_offset_c\\\": -2.0, \\\"led_max_power_w\\\": 20000.0}\", \"operatore avvisato\"], \"solver_override\": {\"temp_target_offset_c\": -2.0, \"led_max_power_w\": 20000.0}, \"verdetto_l0\": \"ALLOWED\", \"confidenza\": 0.86, \"richiede_umano\": false, \"messaggio_operatore\": \"Stress termico o appassimento fogliare: correzione applicata per 6 h, costo stimato -0.85 €/giorno.\"}",
+      "thinking": "Situazione gestita: l'override è attivo e il Level 1 ha ripianificato."
+    }
+  ],
+  "steps": [
+    {
+      "kind": "trigger",
+      "text": "Evento dal monitoraggio: una regola della tabella è stata attivata."
+    },
+    {
+      "kind": "thought",
+      "text": "È scattata la regola RULE_02_HEAT_WILTING (stress termico o appassimento fogliare) nella Zona 2 · Calda (ripiano 4). Prima di agire verifico le misure attuali."
+    },
+    {
+      "kind": "tool_call",
+      "tool": "read_sensors",
+      "label": "Lettura sensori",
+      "text": "Legge i sensori della Zona 2 · Calda (ripiano 4)",
+      "args": {
+        "zone_id": "ZONE_2_WARM"
+      }
+    },
+    {
+      "kind": "tool_result",
+      "tool": "read_sensors",
+      "label": "Lettura sensori",
+      "text": "25.17 °C · umidità 67.66% · CO₂ 830 ppm · pH 6.05 · EC 1.57 · tipburn 0.05 · verde 0.88",
+      "tone": null
+    },
+    {
+      "kind": "thought",
+      "text": "Temperatura 25.17°C, indice di appassimento 0.02. Controllo l'andamento delle ultime 3 ore per capire se è un picco isolato o una tendenza."
+    },
+    {
+      "kind": "tool_call",
+      "tool": "get_sensor_history",
+      "label": "Andamento storico",
+      "text": "Controlla l'andamento di SENS_T_AIR_C nelle ultime 3 ore",
+      "args": {
+        "sensor": "SENS_T_AIR_C",
+        "zone_id": "ZONE_2_WARM",
+        "hours": 3
+      }
+    },
+    {
+      "kind": "tool_result",
+      "tool": "get_sensor_history",
+      "label": "Andamento storico",
+      "text": "23.99 → 25.17 (in aumento, min 23.99, max 25.17)",
+      "tone": null
+    },
+    {
+      "kind": "thought",
+      "text": "Il valore è in aumento (da 23.99 a 25.17°C in 3 ore): non è un picco isolato. In questa zona la coltura più sensibile è Basilico Napoletano a Foglia Larga: verifico i suoi parametri ideali."
+    },
+    {
+      "kind": "tool_call",
+      "tool": "get_crop_targets",
+      "label": "Parametri coltura",
+      "text": "Consulta i parametri ideali di Basilico Napoletano a Foglia Larga",
+      "args": {
+        "crop_id": "basilico"
+      }
+    },
+    {
+      "kind": "tool_result",
+      "tool": "get_crop_targets",
+      "label": "Parametri coltura",
+      "text": "Basilico Napoletano a Foglia Larga: 24.0 °C ottimali, umidità 60–75%, DLI 16.13 mol/m²/d, EC 1.4–2.0",
+      "tone": null
+    },
+    {
+      "kind": "thought",
+      "text": "Confermato: l'ottimo per Basilico Napoletano a Foglia Larga è 24.0 °C: siamo +1.2 °C sopra. La correzione suggerita dalla tabella ({\"temp_target_offset_c\": -2.0, \"led_max_power_w\": 20000.0}) cambia i consumi, quindi controllo prezzo dell'energia e fotovoltaico delle prossime ore."
+    },
+    {
+      "kind": "tool_call",
+      "tool": "get_energy_forecast",
+      "label": "Previsione energia",
+      "text": "Chiede prezzi PUN e fotovoltaico delle prossime 6 ore",
+      "args": {
+        "hours": 6
+      }
+    },
+    {
+      "kind": "tool_result",
+      "tool": "get_energy_forecast",
+      "label": "Previsione energia",
+      "text": "PUN ora 0.088 €/kWh, FV 21800 W; ore care senza FV: nessuna",
+      "tone": null
+    },
+    {
+      "kind": "thought",
+      "text": "PUN attuale 0.088 €/kWh, fotovoltaico 21800 W (copre parte del carico). Chiedo al Level 1 di simulare il piano con l'override prima di proporlo."
+    },
+    {
+      "kind": "tool_call",
+      "tool": "simulate_plan",
+      "label": "Simulazione piano L1",
+      "text": "Chiede al Level 1 un piano di prova con temperatura -2 °C, LED max 20000 W",
+      "args": {
+        "overrides": {
+          "temp_target_offset_c": -2.0,
+          "led_max_power_w": 20000.0
+        }
+      }
+    },
+    {
+      "kind": "tool_result",
+      "tool": "simulate_plan",
+      "label": "Simulazione piano L1",
+      "text": "Costo 11.90 €/giorno (-0.85 €), luce zona 1 00:00 → 16:00, zona 2 00:00 → 16:00",
+      "tone": "good"
+    },
+    {
+      "kind": "thought",
+      "text": "Il piano simulato costa -0.85 €/giorno rispetto a quello attuale (11.90 € contro 12.75 €). È un costo contenuto rispetto al rischio di stress termico e appassimento. Invio la proposta al Safety Gate L0 per 6 ore."
+    },
+    {
+      "kind": "tool_call",
+      "tool": "submit_proposal",
+      "label": "Proposta al Safety Gate L0",
+      "text": "Propone al Level 0: temperatura -2 °C, LED max 20000 W per 6 h",
+      "args": {
+        "overrides": {
+          "temp_target_offset_c": -2.0,
+          "led_max_power_w": 20000.0
+        },
+        "duration_h": 6,
+        "rationale": "Stress termico o appassimento fogliare: temperatura 25.17°C, indice di appassimento 0.02"
+      }
+    },
+    {
+      "kind": "tool_result",
+      "tool": "submit_proposal",
+      "label": "Proposta al Safety Gate L0",
+      "text": "Verdetto L0: ALLOWED — tutti i controlli superati",
+      "tone": "good"
+    },
+    {
+      "kind": "thought",
+      "text": "La proposta è stata approvata dal Level 0 (ALLOWED). Avviso l'operatore così l'intervento resta tracciato."
+    },
+    {
+      "kind": "tool_call",
+      "tool": "notify_operator",
+      "label": "Avviso operatore",
+      "text": "Avvisa l'operatore: \"Stress termico o appassimento fogliare in Zona 2 · Calda (ripiano 4): temperatura 25.17°C. Override applicato per 6 h (L0: ALLOWED).\"",
+      "args": {
+        "severity": "warning",
+        "message": "Stress termico o appassimento fogliare in Zona 2 · Calda (ripiano 4): temperatura 25.17°C. Override applicato per 6 h (L0: ALLOWED)."
+      }
+    },
+    {
+      "kind": "tool_result",
+      "tool": "notify_operator",
+      "label": "Avviso operatore",
+      "text": "Avviso EVT-0003 inviato",
+      "tone": null
+    },
+    {
+      "kind": "thought",
+      "text": "Situazione gestita: l'override è attivo e il Level 1 ha ripianificato."
+    },
+    {
+      "kind": "decision",
+      "text": "Stress termico o appassimento fogliare: correzione applicata per 6 h, costo stimato -0.85 €/giorno.",
+      "decision": {
+        "diagnosi": "Stress termico o appassimento fogliare",
+        "evidenze": [
+          "temperatura 25.17°C (in aumento, 23.99→25.17 in 3 h)",
+          "indice di appassimento 0.02",
+          "l'ottimo per Basilico Napoletano a Foglia Larga è 24.0 °C: siamo +1.2 °C sopra"
+        ],
+        "azioni": [
+          "override al Level 1: {\"temp_target_offset_c\": -2.0, \"led_max_power_w\": 20000.0}",
+          "operatore avvisato"
+        ],
+        "solver_override": {
+          "temp_target_offset_c": -2.0,
+          "led_max_power_w": 20000.0
+        },
+        "verdetto_l0": "ALLOWED",
+        "confidenza": 0.86,
+        "richiede_umano": false,
+        "messaggio_operatore": "Stress termico o appassimento fogliare: correzione applicata per 6 h, costo stimato -0.85 €/giorno."
+      },
+      "tone": "good"
+    }
+  ],
+  "decision": {
+    "diagnosi": "Stress termico o appassimento fogliare",
+    "evidenze": [
+      "temperatura 25.17°C (in aumento, 23.99→25.17 in 3 h)",
+      "indice di appassimento 0.02",
+      "l'ottimo per Basilico Napoletano a Foglia Larga è 24.0 °C: siamo +1.2 °C sopra"
+    ],
+    "azioni": [
+      "override al Level 1: {\"temp_target_offset_c\": -2.0, \"led_max_power_w\": 20000.0}",
+      "operatore avvisato"
+    ],
+    "solver_override": {
+      "temp_target_offset_c": -2.0,
+      "led_max_power_w": 20000.0
+    },
+    "verdetto_l0": "ALLOWED",
+    "confidenza": 0.86,
+    "richiede_umano": false,
+    "messaggio_operatore": "Stress termico o appassimento fogliare: correzione applicata per 6 h, costo stimato -0.85 €/giorno."
+  },
+  "error": null,
+  "tokens": 903,
+  "llm_time_ms": 19054,
+  "tool_calls": 7,
+  "data_origin": "SIMULATED"
+}

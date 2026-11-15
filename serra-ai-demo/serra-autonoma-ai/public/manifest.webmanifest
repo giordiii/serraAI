@@ -1,0 +1,9 @@
+{
+  "name": "Serra Autonoma AI",
+  "short_name": "Serra AI",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f4f7f3",
+  "theme_color": "#123c2b",
+  "description": "Dashboard IoT e Human-in-the-Loop per serra autonoma"
+}

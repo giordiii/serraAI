@@ -1,0 +1,403 @@
+{
+  "id": "RUN-002",
+  "type": "rule_anomaly",
+  "trigger": {
+    "type": "rule_anomaly",
+    "title": "Umidità alta · rischio tipburn · ZONE_1_LEAFY",
+    "rule_id": "RULE_01_HUMIDITY_TIPBURN",
+    "zone_id": "ZONE_1_LEAFY"
+  },
+  "started_at": "2026-11-16T11:00:00+01:00",
+  "model": "mock-llm-1 (emulazione, formato Ollama)",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Sei l'orchestratore L2 della serra verticale \"Campus-Produttore Resiliente CEA - Big Hack 2026\" (Università degli Studi di Napoli Federico II - Campus di Monte Sant'Angelo).\n\nARCHITETTURA\n- Level 0 (Safety Gate): controllo deterministico non-IA. Ha sempre l'ultima parola.\n- Level 1 (Optimizer): pianifica ogni ora LED, HVAC e ventilazione sulle 24 h usando prezzi GME PUN e produzione PVGIS.\n- Level 2 (tu): rilevi anomalie, modifichi i vincoli del Level 1 tramite override, pianifichi raccolti e menu della mensa.\n\nREGOLE DI COMPORTAMENTO\n1. Non comandi mai direttamente gli attuatori: proponi override con il tool submit_proposal. Ogni proposta passa dal Level 0.\n2. Prima di agire verifica i dati: leggi i sensori, controlla l'andamento recente e i parametri ideali della coltura.\n3. Considera sempre il costo energetico: usa get_energy_forecast e confronta i piani con simulate_plan prima di proporre.\n4. Se il Level 0 blocca una proposta, spiega il motivo e riformula entro i limiti. Non tentare di aggirarlo.\n5. Se i dati hanno qualità STALE o INVALID non decidere: avvisa l'operatore con notify_operator.\n6. Per i menu applica la logica FEFO: prima i prodotti che scadono prima.\n\nTABELLA REGOLE DI RIFERIMENTO (puoi andare oltre se la situazione lo richiede)\n[\n {\n  \"rule_id\": \"RULE_01_HUMIDITY_TIPBURN\",\n  \"if_condition\": \"SENS_RH_AIR_PCT > 75.0 OR CV_TIPBURN_RISK > 0.30\",\n  \"diagnosis\": \"Rischio muffa o necrosi marginale (Tipburn) per scarsa traspirazione\",\n  \"solver_override\": {\n   \"rh_max_pct\": 62.0,\n   \"vent_min_m3_h\": 1500.0\n  }\n },\n {\n  \"rule_id\": \"RULE_02_HEAT_WILTING\",\n  \"if_condition\": \"SENS_T_AIR_C > 25.0 OR CV_WILTING_SCORE > 0.25\",\n  \"diagnosis\": \"Stress termico o appassimento fogliare\",\n  \"solver_override\": {\n   \"temp_target_offset_c\": -2.0,\n   \"led_max_power_w\": 20000.0\n  }\n },\n {\n  \"rule_id\": \"RULE_03_NUTRIENT_CHLOROSIS\",\n  \"if_condition\": \"CV_GREENNESS_INDEX < 0.60\",\n  \"diagnosis\": \"Carenza clorofilliana / nutrienti\",\n  \"solver_override\": {\n   \"ec_setpoint_offset_ms_cm\": 0.2,\n   \"ph_setpoint\": 5.8\n  }\n },\n {\n  \"rule_id\": \"RULE_04_ENERGY_PRICE_SPIKE\",\n  \"if_condition\": \"pun_eur_kwh > 0.17 AND pvgis_power_w == 0\",\n  \"diagnosis\": \"Fascia serale ad alto costo elettrico senza fotovoltaico\",\n  \"solver_override\": {\n   \"prefer_dark_window_hours\": [\n    18,\n    19,\n    20,\n    21\n   ]\n  }\n }\n]\n\nFORMATO DELLA RISPOSTA FINALE\nQuando hai finito, rispondi senza chiamare tool con un oggetto JSON:\n{\"diagnosi\": str, \"evidenze\": [str], \"azioni\": [str], \"solver_override\": object|null,\n  \"verdetto_l0\": \"ALLOWED\"|\"CLIPPED\"|\"BLOCKED\"|null, \"confidenza\": float 0-1,\n  \"richiede_umano\": bool, \"messaggio_operatore\": str}\n"
+    },
+    {
+      "role": "user",
+      "content": "Evento dal monitoraggio: una regola della tabella è stata attivata.\n```json\n{\"type\": \"rule_anomaly\", \"rule_id\": \"RULE_01_HUMIDITY_TIPBURN\", \"zone_id\": \"ZONE_1_LEAFY\", \"variables\": {\"SENS_T_AIR_C\": 19.66, \"SENS_RH_AIR_PCT\": 75.82, \"SENS_CO2_PPM\": 841.93, \"SENS_PAR_PPFD\": 231.9, \"CV_GREENNESS_INDEX\": 0.88, \"CV_TIPBURN_RISK\": 0.11, \"CV_WILTING_SCORE\": 0.02, \"SENS_SOL_PH\": 6.05, \"SENS_SOL_EC_MS_CM\": 1.57, \"SENS_SOL_TEMP_C\": 19.08, \"SENS_TANK_LVL_L\": 910.4, \"pun_eur_kwh\": 0.088, \"pvgis_power_w\": 21800}}\n```"
+    },
+    {
+      "role": "assistant",
+      "content": "È scattata la regola RULE_01_HUMIDITY_TIPBURN (rischio muffa o necrosi marginale (tipburn) per scarsa traspirazione) nella Zona 1 · Foglia (ripiani 1-3). Prima di agire verifico le misure attuali.",
+      "tool_calls": [
+        {
+          "id": "call_1",
+          "type": "function",
+          "function": {
+            "name": "read_sensors",
+            "arguments": {
+              "zone_id": "ZONE_1_LEAFY"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_1",
+      "name": "read_sensors",
+      "content": "{\"zone_id\": \"ZONE_1_LEAFY\", \"at\": \"2026-11-16T11:00:00+01:00\", \"readings\": {\"SENS_T_AIR_C\": 19.66, \"SENS_RH_AIR_PCT\": 75.82, \"SENS_CO2_PPM\": 841.93, \"SENS_PAR_PPFD\": 231.9, \"CV_GREENNESS_INDEX\": 0.88, \"CV_TIPBURN_RISK\": 0.11, \"CV_WILTING_SCORE\": 0.02, \"SENS_SOL_PH\": 6.05, \"SENS_SOL_EC_MS_CM\": 1.57, \"SENS_SOL_TEMP_C\": 19.08, \"SENS_TANK_LVL_L\": 910.4}, \"crops\": [\"lattuga\", \"spinacio\", \"rucola\"], \"quality\": \"VALID\", \"data_origin\": \"SIMULATED\"}"
+    },
+    {
+      "role": "assistant",
+      "content": "Umidità 75.82%, rischio tipburn 0.11. Controllo l'andamento delle ultime 3 ore per capire se è un picco isolato o una tendenza.",
+      "tool_calls": [
+        {
+          "id": "call_2",
+          "type": "function",
+          "function": {
+            "name": "get_sensor_history",
+            "arguments": {
+              "sensor": "SENS_RH_AIR_PCT",
+              "zone_id": "ZONE_1_LEAFY",
+              "hours": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_2",
+      "name": "get_sensor_history",
+      "content": "{\"sensor\": \"SENS_RH_AIR_PCT\", \"zone_id\": \"ZONE_1_LEAFY\", \"hours\": 3, \"first\": 64.9, \"last\": 75.82, \"min\": 64.56, \"max\": 75.82, \"delta\": 10.92, \"trend\": \"in aumento\", \"samples\": 13}"
+    },
+    {
+      "role": "assistant",
+      "content": "Il valore è in aumento (da 64.9 a 75.82% in 3 ore): non è un picco isolato. In questa zona la coltura più sensibile è Spinacio Novello: verifico i suoi parametri ideali.",
+      "tool_calls": [
+        {
+          "id": "call_3",
+          "type": "function",
+          "function": {
+            "name": "get_crop_targets",
+            "arguments": {
+              "crop_id": "spinacio"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_3",
+      "name": "get_crop_targets",
+      "content": "{\"crop_id\": \"spinacio\", \"name\": \"Spinacio Novello\", \"temp_opt_c\": 18.5, \"temp_min_max_c\": [8.0, 26.0], \"rh_min_max_pct\": [60.0, 70.0], \"ppfd_umol_m2_s\": 250.0, \"photoperiod_h\": 14, \"dli_target_mol_m2_d\": 12.6, \"ph_range\": [6.0, 7.0], \"ec_range_ms_cm\": [1.8, 2.3], \"cycle_days\": 25}"
+    },
+    {
+      "role": "assistant",
+      "content": "Confermato: il limite massimo per Spinacio Novello è 70.0%: siamo +5.8 oltre. La correzione suggerita dalla tabella ({\"rh_max_pct\": 62.0, \"vent_min_m3_h\": 1500.0}) cambia i consumi, quindi controllo prezzo dell'energia e fotovoltaico delle prossime ore.",
+      "tool_calls": [
+        {
+          "id": "call_4",
+          "type": "function",
+          "function": {
+            "name": "get_energy_forecast",
+            "arguments": {
+              "hours": 6
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_4",
+      "name": "get_energy_forecast",
+      "content": "{\"from_hour\": 11, \"rows\": [{\"hour\": 11, \"pun_eur_kwh\": 0.088, \"pv_w\": 21800}, {\"hour\": 12, \"pun_eur_kwh\": 0.074, \"pv_w\": 21500}, {\"hour\": 13, \"pun_eur_kwh\": 0.072, \"pv_w\": 19200}, {\"hour\": 14, \"pun_eur_kwh\": 0.08, \"pv_w\": 14800}, {\"hour\": 15, \"pun_eur_kwh\": 0.105, \"pv_w\": 9100}, {\"hour\": 16, \"pun_eur_kwh\": 0.138, \"pv_w\": 3400}], \"expensive_hours_no_pv\": [], \"pun_now\": 0.088, \"pv_now_w\": 21800, \"led_on_hours_in_window\": [11, 12, 13, 14, 15], \"data_origin\": \"EXTERNAL (GME PUN, PVGIS)\"}"
+    },
+    {
+      "role": "assistant",
+      "content": "PUN attuale 0.088 €/kWh, fotovoltaico 21800 W (copre parte del carico). Chiedo al Level 1 di simulare il piano con l'override prima di proporlo.",
+      "tool_calls": [
+        {
+          "id": "call_5",
+          "type": "function",
+          "function": {
+            "name": "simulate_plan",
+            "arguments": {
+              "overrides": {
+                "rh_max_pct": 62.0,
+                "vent_min_m3_h": 1500.0
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_5",
+      "name": "simulate_plan",
+      "content": "{\"overrides\": {\"rh_max_pct\": 62.0, \"vent_min_m3_h\": 1500.0}, \"current\": {\"light_windows\": {\"ZONE_1_LEAFY\": \"00:00 → 16:00\", \"ZONE_2_WARM\": \"00:00 → 16:00\"}, \"dli\": {\"ZONE_1_LEAFY\": \"13.44/12.84\", \"ZONE_2_WARM\": \"16.13/16.13\"}, \"cost_eur_day\": 12.75, \"grid_kwh_day\": 126.31, \"pv_share_pct\": 46.5}, \"proposed\": {\"light_windows\": {\"ZONE_1_LEAFY\": \"00:00 → 16:00\", \"ZONE_2_WARM\": \"00:00 → 16:00\"}, \"dli\": {\"ZONE_1_LEAFY\": \"13.44/12.84\", \"ZONE_2_WARM\": \"16.13/16.13\"}, \"cost_eur_day\": 14.16, \"grid_kwh_day\": 137.53, \"pv_share_pct\": 45.4}, \"delta_cost_eur\": 1.41, \"binding_constraints\": [\"rh_max 62% → ventilazione portata a 2800 m³/h\", \"ventilazione minima 1500 m³/h\", \"buio minimo obbligatorio 6 h (L0)\"]}"
+    },
+    {
+      "role": "assistant",
+      "content": "Il piano simulato costa +1.41 €/giorno rispetto a quello attuale (14.16 € contro 12.75 €). È un costo contenuto rispetto al rischio di muffe e necrosi marginale delle foglie (tipburn). Invio la proposta al Safety Gate L0 per 6 ore.",
+      "tool_calls": [
+        {
+          "id": "call_6",
+          "type": "function",
+          "function": {
+            "name": "submit_proposal",
+            "arguments": {
+              "overrides": {
+                "rh_max_pct": 62.0,
+                "vent_min_m3_h": 1500.0
+              },
+              "duration_h": 6,
+              "rationale": "Rischio muffa o necrosi marginale (Tipburn) per scarsa traspirazione: umidità 75.82%, rischio tipburn 0.11"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_6",
+      "name": "submit_proposal",
+      "content": "{\"proposal_id\": \"L0-0001\", \"verdict\": \"ALLOWED\", \"checks\": [{\"param\": \"vent_min_m3_h\", \"requested\": 1500.0, \"limit\": \"150–3500 m³/h\", \"outcome\": \"OK\", \"reason\": \"Entro i limiti\", \"applied\": null}, {\"param\": \"rh_max_pct\", \"requested\": 62.0, \"limit\": \"45–85 %\", \"outcome\": \"OK\", \"reason\": \"Entro i limiti\", \"applied\": null}], \"applied_overrides\": {\"rh_max_pct\": 62.0, \"vent_min_m3_h\": 1500.0}, \"valid_for_h\": 6, \"new_plan\": {\"light_windows\": {\"ZONE_1_LEAFY\": \"00:00 → 16:00\", \"ZONE_2_WARM\": \"00:00 → 16:00\"}, \"dli\": {\"ZONE_1_LEAFY\": \"13.44/12.84\", \"ZONE_2_WARM\": \"16.13/16.13\"}, \"cost_eur_day\": 14.16, \"grid_kwh_day\": 137.53, \"pv_share_pct\": 45.4}}"
+    },
+    {
+      "role": "assistant",
+      "content": "La proposta è stata approvata dal Level 0 (ALLOWED). Avviso l'operatore così l'intervento resta tracciato.",
+      "tool_calls": [
+        {
+          "id": "call_7",
+          "type": "function",
+          "function": {
+            "name": "notify_operator",
+            "arguments": {
+              "severity": "warning",
+              "message": "Rischio muffa o necrosi marginale (Tipburn) per scarsa traspirazione in Zona 1 · Foglia (ripiani 1-3): umidità 75.82%. Override applicato per 6 h (L0: ALLOWED)."
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_7",
+      "name": "notify_operator",
+      "content": "{\"event_id\": \"EVT-0003\", \"delivered\": true}"
+    },
+    {
+      "role": "assistant",
+      "content": "{\"diagnosi\": \"Rischio muffa o necrosi marginale (Tipburn) per scarsa traspirazione\", \"evidenze\": [\"umidità 75.82% (in aumento, 64.9→75.82 in 3 h)\", \"rischio tipburn 0.11\", \"il limite massimo per Spinacio Novello è 70.0%: siamo +5.8 oltre\"], \"azioni\": [\"override al Level 1: {\\\"rh_max_pct\\\": 62.0, \\\"vent_min_m3_h\\\": 1500.0}\", \"operatore avvisato\"], \"solver_override\": {\"rh_max_pct\": 62.0, \"vent_min_m3_h\": 1500.0}, \"verdetto_l0\": \"ALLOWED\", \"confidenza\": 0.86, \"richiede_umano\": false, \"messaggio_operatore\": \"Rischio muffa o necrosi marginale (Tipburn) per scarsa traspirazione: correzione applicata per 6 h, costo stimato +1.41 €/giorno.\"}",
+      "thinking": "Situazione gestita: l'override è attivo e il Level 1 ha ripianificato."
+    }
+  ],
+  "steps": [
+    {
+      "kind": "trigger",
+      "text": "Evento dal monitoraggio: una regola della tabella è stata attivata."
+    },
+    {
+      "kind": "thought",
+      "text": "È scattata la regola RULE_01_HUMIDITY_TIPBURN (rischio muffa o necrosi marginale (tipburn) per scarsa traspirazione) nella Zona 1 · Foglia (ripiani 1-3). Prima di agire verifico le misure attuali."
+    },
+    {
+      "kind": "tool_call",
+      "tool": "read_sensors",
+      "label": "Lettura sensori",
+      "text": "Legge i sensori della Zona 1 · Foglia (ripiani 1-3)",
+      "args": {
+        "zone_id": "ZONE_1_LEAFY"
+      }
+    },
+    {
+      "kind": "tool_result",
+      "tool": "read_sensors",
+      "label": "Lettura sensori",
+      "text": "19.66 °C · umidità 75.82% · CO₂ 842 ppm · pH 6.05 · EC 1.57 · tipburn 0.11 · verde 0.88",
+      "tone": null
+    },
+    {
+      "kind": "thought",
+      "text": "Umidità 75.82%, rischio tipburn 0.11. Controllo l'andamento delle ultime 3 ore per capire se è un picco isolato o una tendenza."
+    },
+    {
+      "kind": "tool_call",
+      "tool": "get_sensor_history",
+      "label": "Andamento storico",
+      "text": "Controlla l'andamento di SENS_RH_AIR_PCT nelle ultime 3 ore",
+      "args": {
+        "sensor": "SENS_RH_AIR_PCT",
+        "zone_id": "ZONE_1_LEAFY",
+        "hours": 3
+      }
+    },
+    {
+      "kind": "tool_result",
+      "tool": "get_sensor_history",
+      "label": "Andamento storico",
+      "text": "64.9 → 75.82 (in aumento, min 64.56, max 75.82)",
+      "tone": null
+    },
+    {
+      "kind": "thought",
+      "text": "Il valore è in aumento (da 64.9 a 75.82% in 3 ore): non è un picco isolato. In questa zona la coltura più sensibile è Spinacio Novello: verifico i suoi parametri ideali."
+    },
+    {
+      "kind": "tool_call",
+      "tool": "get_crop_targets",
+      "label": "Parametri coltura",
+      "text": "Consulta i parametri ideali di Spinacio Novello",
+      "args": {
+        "crop_id": "spinacio"
+      }
+    },
+    {
+      "kind": "tool_result",
+      "tool": "get_crop_targets",
+      "label": "Parametri coltura",
+      "text": "Spinacio Novello: 18.5 °C ottimali, umidità 60–70%, DLI 12.6 mol/m²/d, EC 1.8–2.3",
+      "tone": null
+    },
+    {
+      "kind": "thought",
+      "text": "Confermato: il limite massimo per Spinacio Novello è 70.0%: siamo +5.8 oltre. La correzione suggerita dalla tabella ({\"rh_max_pct\": 62.0, \"vent_min_m3_h\": 1500.0}) cambia i consumi, quindi controllo prezzo dell'energia e fotovoltaico delle prossime ore."
+    },
+    {
+      "kind": "tool_call",
+      "tool": "get_energy_forecast",
+      "label": "Previsione energia",
+      "text": "Chiede prezzi PUN e fotovoltaico delle prossime 6 ore",
+      "args": {
+        "hours": 6
+      }
+    },
+    {
+      "kind": "tool_result",
+      "tool": "get_energy_forecast",
+      "label": "Previsione energia",
+      "text": "PUN ora 0.088 €/kWh, FV 21800 W; ore care senza FV: nessuna",
+      "tone": null
+    },
+    {
+      "kind": "thought",
+      "text": "PUN attuale 0.088 €/kWh, fotovoltaico 21800 W (copre parte del carico). Chiedo al Level 1 di simulare il piano con l'override prima di proporlo."
+    },
+    {
+      "kind": "tool_call",
+      "tool": "simulate_plan",
+      "label": "Simulazione piano L1",
+      "text": "Chiede al Level 1 un piano di prova con umidità max 62%, ventilazione min 1500 m³/h",
+      "args": {
+        "overrides": {
+          "rh_max_pct": 62.0,
+          "vent_min_m3_h": 1500.0
+        }
+      }
+    },
+    {
+      "kind": "tool_result",
+      "tool": "simulate_plan",
+      "label": "Simulazione piano L1",
+      "text": "Costo 14.16 €/giorno (+1.41 €), luce zona 1 00:00 → 16:00, zona 2 00:00 → 16:00",
+      "tone": null
+    },
+    {
+      "kind": "thought",
+      "text": "Il piano simulato costa +1.41 €/giorno rispetto a quello attuale (14.16 € contro 12.75 €). È un costo contenuto rispetto al rischio di muffe e necrosi marginale delle foglie (tipburn). Invio la proposta al Safety Gate L0 per 6 ore."
+    },
+    {
+      "kind": "tool_call",
+      "tool": "submit_proposal",
+      "label": "Proposta al Safety Gate L0",
+      "text": "Propone al Level 0: umidità max 62%, ventilazione min 1500 m³/h per 6 h",
+      "args": {
+        "overrides": {
+          "rh_max_pct": 62.0,
+          "vent_min_m3_h": 1500.0
+        },
+        "duration_h": 6,
+        "rationale": "Rischio muffa o necrosi marginale (Tipburn) per scarsa traspirazione: umidità 75.82%, rischio tipburn 0.11"
+      }
+    },
+    {
+      "kind": "tool_result",
+      "tool": "submit_proposal",
+      "label": "Proposta al Safety Gate L0",
+      "text": "Verdetto L0: ALLOWED — tutti i controlli superati",
+      "tone": "good"
+    },
+    {
+      "kind": "thought",
+      "text": "La proposta è stata approvata dal Level 0 (ALLOWED). Avviso l'operatore così l'intervento resta tracciato."
+    },
+    {
+      "kind": "tool_call",
+      "tool": "notify_operator",
+      "label": "Avviso operatore",
+      "text": "Avvisa l'operatore: \"Rischio muffa o necrosi marginale (Tipburn) per scarsa traspirazione in Zona 1 · Foglia (ripiani 1-3): umidità 75.82%. Override applicato per 6 h (L0: ALLOWED).\"",
+      "args": {
+        "severity": "warning",
+        "message": "Rischio muffa o necrosi marginale (Tipburn) per scarsa traspirazione in Zona 1 · Foglia (ripiani 1-3): umidità 75.82%. Override applicato per 6 h (L0: ALLOWED)."
+      }
+    },
+    {
+      "kind": "tool_result",
+      "tool": "notify_operator",
+      "label": "Avviso operatore",
+      "text": "Avviso EVT-0003 inviato",
+      "tone": null
+    },
+    {
+      "kind": "thought",
+      "text": "Situazione gestita: l'override è attivo e il Level 1 ha ripianificato."
+    },
+    {
+      "kind": "decision",
+      "text": "Rischio muffa o necrosi marginale (Tipburn) per scarsa traspirazione: correzione applicata per 6 h, costo stimato +1.41 €/giorno.",
+      "decision": {
+        "diagnosi": "Rischio muffa o necrosi marginale (Tipburn) per scarsa traspirazione",
+        "evidenze": [
+          "umidità 75.82% (in aumento, 64.9→75.82 in 3 h)",
+          "rischio tipburn 0.11",
+          "il limite massimo per Spinacio Novello è 70.0%: siamo +5.8 oltre"
+        ],
+        "azioni": [
+          "override al Level 1: {\"rh_max_pct\": 62.0, \"vent_min_m3_h\": 1500.0}",
+          "operatore avvisato"
+        ],
+        "solver_override": {
+          "rh_max_pct": 62.0,
+          "vent_min_m3_h": 1500.0
+        },
+        "verdetto_l0": "ALLOWED",
+        "confidenza": 0.86,
+        "richiede_umano": false,
+        "messaggio_operatore": "Rischio muffa o necrosi marginale (Tipburn) per scarsa traspirazione: correzione applicata per 6 h, costo stimato +1.41 €/giorno."
+      },
+      "tone": "good"
+    }
+  ],
+  "decision": {
+    "diagnosi": "Rischio muffa o necrosi marginale (Tipburn) per scarsa traspirazione",
+    "evidenze": [
+      "umidità 75.82% (in aumento, 64.9→75.82 in 3 h)",
+      "rischio tipburn 0.11",
+      "il limite massimo per Spinacio Novello è 70.0%: siamo +5.8 oltre"
+    ],
+    "azioni": [
+      "override al Level 1: {\"rh_max_pct\": 62.0, \"vent_min_m3_h\": 1500.0}",
+      "operatore avvisato"
+    ],
+    "solver_override": {
+      "rh_max_pct": 62.0,
+      "vent_min_m3_h": 1500.0
+    },
+    "verdetto_l0": "ALLOWED",
+    "confidenza": 0.86,
+    "richiede_umano": false,
+    "messaggio_operatore": "Rischio muffa o necrosi marginale (Tipburn) per scarsa traspirazione: correzione applicata per 6 h, costo stimato +1.41 €/giorno."
+  },
+  "error": null,
+  "tokens": 909,
+  "llm_time_ms": 19162,
+  "tool_calls": 7,
+  "data_origin": "SIMULATED"
+}

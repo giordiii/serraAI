@@ -1,0 +1,1804 @@
+openapi: 3.1.0
+info:
+  title: Micro-Hub CEA Frontend Integration API
+  version: 1.0.0-draft
+  summary: Contratto proposto tra dashboard React e backend Micro-Hub CEA.
+  description: |
+    Specifica contrattuale proposta per integrare il frontend React/Vite con il nuovo
+    backend Micro-Hub CEA. Non è una descrizione estratta dal codice React esistente:
+    gli endpoint dovranno essere verificati rispetto ai componenti e alle schermate
+    effettivamente presenti nel repository frontend.
+
+    Principi:
+    - il frontend è un client di consultazione e supervisione;
+    - il backend è l'unica fonte autorevole dei dati;
+    - dati osservati, predetti e simulati sono sempre distinguibili;
+    - ogni proposta di azione passa dal Safe Action Gate L0;
+    - questa versione è destinata alla modalità SIMULATION e non espone comandi
+      diretti verso hardware fisico.
+  contact:
+    name: Micro-Hub CEA project
+  license:
+    name: Project-specific / not yet assigned
+servers:
+  - url: http://127.0.0.1:8000
+    description: Sviluppo locale Fedora
+  - url: https://{host}
+    description: Server futuro (placeholder; configurare il dominio reale)
+    variables:
+      host:
+        default: microhub.example.invalid
+        description: Dominio da configurare prima del deployment
+
+tags:
+  - name: System
+    description: Health check, stato generale e dashboard.
+  - name: Hubs and zones
+    description: Anagrafica Micro-Hub e zone di coltivazione.
+  - name: Plants
+    description: Registro piante e metriche.
+  - name: Telemetry
+    description: Telemetria ambientale, energetica e attuatori.
+  - name: Predictions
+    description: Risultati dei modelli predittivi.
+  - name: Energy optimization
+    description: Pianificazione energetica/climatica con solver e MPC.
+  - name: Production and menus
+    description: Inventario, previsioni di raccolta e pianificazione mensa.
+  - name: Orchestrator
+    description: Richieste cognitive e tracciamento delle esecuzioni LLM.
+  - name: Events
+    description: Alert, anomalie ed eventi del sistema.
+  - name: Safety Gate
+    description: Proposte, validazioni, blocchi e approvazioni L0.
+  - name: Digital Twin
+    description: Controllo della simulazione e scenari dimostrativi.
+  - name: Models and datasets
+    description: Stato dei dataset e dei modelli registrati.
+  - name: Devices
+    description: Stato di sensori e attuatori; sola lettura in questa versione.
+  - name: Live updates
+    description: Stream SSE per aggiornare la dashboard.
+
+security:
+  - LocalBearerAuth: []
+
+paths:
+  /health/live:
+    get:
+      tags: [System]
+      operationId: getLiveness
+      summary: Verifica che il processo backend sia attivo
+      security: []
+      responses:
+        '200':
+          description: Processo attivo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+  /health/ready:
+    get:
+      tags: [System]
+      operationId: getReadiness
+      summary: Verifica disponibilità di database e servizi essenziali
+      security: []
+      responses:
+        '200':
+          description: Backend pronto
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadinessStatus'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /api/v1/dashboard/overview:
+    get:
+      tags: [System]
+      operationId: getDashboardOverview
+      summary: Recupera i dati aggregati per la dashboard principale
+      parameters:
+        - $ref: '#/components/parameters/HubId'
+      responses:
+        '200':
+          description: KPI e riepilogo del Micro-Hub
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardOverview'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /api/v1/hubs:
+    get:
+      tags: [Hubs and zones]
+      operationId: listHubs
+      summary: Elenca i Micro-Hub accessibili
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Elenco Micro-Hub
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HubList'
+
+  /api/v1/hubs/{hub_id}:
+    get:
+      tags: [Hubs and zones]
+      operationId: getHub
+      summary: Recupera un Micro-Hub
+      parameters:
+        - $ref: '#/components/parameters/HubIdPath'
+      responses:
+        '200':
+          description: Micro-Hub
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Hub'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/hubs/{hub_id}/zones:
+    get:
+      tags: [Hubs and zones]
+      operationId: listHubZones
+      summary: Elenca le zone di un Micro-Hub
+      parameters:
+        - $ref: '#/components/parameters/HubIdPath'
+      responses:
+        '200':
+          description: Zone del Micro-Hub
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ZoneList'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/zones/{zone_id}:
+    get:
+      tags: [Hubs and zones]
+      operationId: getZone
+      summary: Recupera dettagli di una zona
+      parameters:
+        - $ref: '#/components/parameters/ZoneIdPath'
+      responses:
+        '200':
+          description: Zona
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Zone'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/plants:
+    get:
+      tags: [Plants]
+      operationId: listPlants
+      summary: Elenca le piante con filtri
+      parameters:
+        - $ref: '#/components/parameters/HubId'
+        - name: zone_id
+          in: query
+          schema: { type: string }
+        - name: crop
+          in: query
+          schema: { type: string }
+        - name: stage
+          in: query
+          schema: { type: string }
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Registro piante
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlantList'
+  /api/v1/plants/{plant_id}:
+    get:
+      tags: [Plants]
+      operationId: getPlant
+      summary: Recupera una pianta
+      parameters:
+        - $ref: '#/components/parameters/PlantIdPath'
+      responses:
+        '200':
+          description: Pianta
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Plant'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/v1/plants/{plant_id}/metrics:
+    get:
+      tags: [Plants]
+      operationId: getPlantMetrics
+      summary: Recupera metriche osservate e/o predette di una pianta
+      parameters:
+        - $ref: '#/components/parameters/PlantIdPath'
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+        - name: data_origin
+          in: query
+          schema:
+            $ref: '#/components/schemas/DataOrigin'
+      responses:
+        '200':
+          description: Serie di metriche della pianta
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlantMetricSeries'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/telemetry/latest:
+    get:
+      tags: [Telemetry]
+      operationId: getLatestTelemetry
+      summary: Recupera l'ultima telemetria disponibile
+      parameters:
+        - $ref: '#/components/parameters/HubId'
+        - name: zone_id
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Ultime letture per zona
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TelemetryLatest'
+  /api/v1/telemetry/history:
+    get:
+      tags: [Telemetry]
+      operationId: getTelemetryHistory
+      summary: Recupera lo storico della telemetria
+      parameters:
+        - $ref: '#/components/parameters/HubId'
+        - name: zone_id
+          in: query
+          schema: { type: string }
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+        - name: metric
+          in: query
+          description: Filtra una metrica, ad esempio temperature_c o rh_pct.
+          schema: { type: string }
+        - name: data_origin
+          in: query
+          schema:
+            $ref: '#/components/schemas/DataOrigin'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Serie temporale
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TelemetrySeries'
+
+  /api/v1/energy/overview:
+    get:
+      tags: [Telemetry]
+      operationId: getEnergyOverview
+      summary: Riepilogo energetico corrente
+      parameters:
+        - $ref: '#/components/parameters/HubId'
+      responses:
+        '200':
+          description: Stato energetico
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnergyOverview'
+  /api/v1/energy/forecast:
+    get:
+      tags: [Telemetry]
+      operationId: getEnergyForecast
+      summary: Recupera prezzi, carichi e produzione FV previsti
+      parameters:
+        - $ref: '#/components/parameters/HubId'
+        - name: horizon_hours
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 168, default: 24 }
+      responses:
+        '200':
+          description: Previsioni energetiche
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnergyForecast'
+
+  /api/v1/predictions/latest:
+    get:
+      tags: [Predictions]
+      operationId: getLatestPredictions
+      summary: Recupera le previsioni più recenti
+      parameters:
+        - $ref: '#/components/parameters/HubId'
+        - name: zone_id
+          in: query
+          schema: { type: string }
+        - name: plant_id
+          in: query
+          schema: { type: string }
+        - name: target
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Previsioni
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PredictionList'
+  /api/v1/predictions/runs:
+    get:
+      tags: [Predictions]
+      operationId: listPredictionRuns
+      summary: Elenca le esecuzioni dei modelli predittivi
+      parameters:
+        - $ref: '#/components/parameters/HubId'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Esecuzioni predittive
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PredictionRunList'
+  /api/v1/predictions/runs/{run_id}:
+    get:
+      tags: [Predictions]
+      operationId: getPredictionRun
+      summary: Recupera un'esecuzione predittiva
+      parameters:
+        - $ref: '#/components/parameters/RunIdPath'
+      responses:
+        '200':
+          description: Esecuzione e output
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PredictionRun'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/optimization/energy/runs:
+    post:
+      tags: [Energy optimization]
+      operationId: createEnergyOptimizationRun
+      summary: Avvia un'ottimizzazione energetica in modalità simulazione
+      description: |
+        Avvia LP/MILP/QP/MPC in modalità SIMULATION. Il risultato è un piano proposto,
+        non un comando eseguito. Ogni proposta operativa deve essere valutata da L0.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnergyOptimizationRequest'
+      responses:
+        '202':
+          description: Ottimizzazione accettata per l'elaborazione
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OptimizationRunAccepted'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    get:
+      tags: [Energy optimization]
+      operationId: listEnergyOptimizationRuns
+      summary: Elenca le ottimizzazioni energetiche
+      parameters:
+        - $ref: '#/components/parameters/HubId'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Esecuzioni solver
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OptimizationRunList'
+  /api/v1/optimization/energy/runs/{run_id}:
+    get:
+      tags: [Energy optimization]
+      operationId: getEnergyOptimizationRun
+      summary: Recupera risultato completo di un'ottimizzazione
+      parameters:
+        - $ref: '#/components/parameters/RunIdPath'
+      responses:
+        '200':
+          description: Piano energetico e risultati del solver
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnergyOptimizationRun'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/production/overview:
+    get:
+      tags: [Production and menus]
+      operationId: getProductionOverview
+      summary: Riepilogo produzione e raccolti
+      parameters:
+        - $ref: '#/components/parameters/HubId'
+      responses:
+        '200':
+          description: Disponibilità e produzione prevista
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductionOverview'
+  /api/v1/production/inventory:
+    get:
+      tags: [Production and menus]
+      operationId: listHarvestInventory
+      summary: Elenca l'inventario del raccolto
+      parameters:
+        - $ref: '#/components/parameters/HubId'
+        - name: crop
+          in: query
+          schema: { type: string }
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Inventario
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryList'
+  /api/v1/production/harvest-forecasts:
+    get:
+      tags: [Production and menus]
+      operationId: listHarvestForecasts
+      summary: Elenca le previsioni di raccolta
+      parameters:
+        - $ref: '#/components/parameters/HubId'
+        - name: days
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 60, default: 7 }
+      responses:
+        '200':
+          description: Raccolti previsti
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HarvestForecastList'
+  /api/v1/optimization/production/runs:
+    post:
+      tags: [Production and menus]
+      operationId: createProductionOptimizationRun
+      summary: Avvia l'ottimizzazione dell'allocazione produttiva
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductionOptimizationRequest'
+      responses:
+        '202':
+          description: Ottimizzazione accettata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OptimizationRunAccepted'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/v1/menus:
+    get:
+      tags: [Production and menus]
+      operationId: listMenus
+      summary: Elenca i menu salvati o proposti
+      parameters:
+        - $ref: '#/components/parameters/HubId'
+        - name: week_start
+          in: query
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: Menu
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MenuList'
+    post:
+      tags: [Production and menus]
+      operationId: createMenuDraft
+      summary: Crea una bozza di menu a partire da disponibilità e vincoli
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MenuDraftRequest'
+      responses:
+        '202':
+          description: Generazione bozza accettata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MenuDraftAccepted'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/v1/orchestrator/requests:
+    post:
+      tags: [Orchestrator]
+      operationId: submitOrchestratorRequest
+      summary: Invia una richiesta cognitiva all'orchestratore L1
+      description: |
+        L'orchestratore può richiamare servizi autorizzati e restituire una proposta.
+        Non può comandare direttamente attuatori, modificare vincoli L0 o aggirare
+        le autorizzazioni umane.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrchestratorRequest'
+      responses:
+        '202':
+          description: Richiesta accettata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrchestratorRunAccepted'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    get:
+      tags: [Orchestrator]
+      operationId: listOrchestratorRuns
+      summary: Elenca le esecuzioni dell'orchestratore
+      parameters:
+        - $ref: '#/components/parameters/HubId'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Esecuzioni L1
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrchestratorRunList'
+  /api/v1/orchestrator/runs/{run_id}:
+    get:
+      tags: [Orchestrator]
+      operationId: getOrchestratorRun
+      summary: Recupera dettagli e passaggi di un'esecuzione L1
+      parameters:
+        - $ref: '#/components/parameters/RunIdPath'
+      responses:
+        '200':
+          description: Dettagli esecuzione
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrchestratorRun'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/events:
+    get:
+      tags: [Events]
+      operationId: listEvents
+      summary: Elenca eventi e alert
+      parameters:
+        - $ref: '#/components/parameters/HubId'
+        - name: severity
+          in: query
+          schema:
+            type: string
+            enum: [info, warning, critical]
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [open, acknowledged, resolved]
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Eventi
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventList'
+  /api/v1/events/{event_id}:
+    get:
+      tags: [Events]
+      operationId: getEvent
+      summary: Recupera un evento
+      parameters:
+        - $ref: '#/components/parameters/EventIdPath'
+      responses:
+        '200':
+          description: Evento
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/v1/events/{event_id}/acknowledgement:
+    post:
+      tags: [Events]
+      operationId: acknowledgeEvent
+      summary: Registra la presa visione di un evento
+      parameters:
+        - $ref: '#/components/parameters/EventIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [actor_id]
+              properties:
+                actor_id: { type: string }
+                note: { type: string, maxLength: 1000 }
+      responses:
+        '200':
+          description: Evento aggiornato
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/safety/proposals:
+    get:
+      tags: [Safety Gate]
+      operationId: listSafetyProposals
+      summary: Elenca proposte sottoposte al Gate L0
+      parameters:
+        - $ref: '#/components/parameters/HubId'
+        - name: gate_status
+          in: query
+          schema:
+            $ref: '#/components/schemas/GateStatus'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Proposte e verdetti L0
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SafetyProposalList'
+  /api/v1/safety/proposals/{proposal_id}:
+    get:
+      tags: [Safety Gate]
+      operationId: getSafetyProposal
+      summary: Recupera dettagli di una proposta
+      parameters:
+        - $ref: '#/components/parameters/ProposalIdPath'
+      responses:
+        '200':
+          description: Proposta
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SafetyProposal'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/v1/safety/proposals/{proposal_id}/validate:
+    post:
+      tags: [Safety Gate]
+      operationId: validateSafetyProposal
+      summary: Richiede una valutazione L0 senza eseguire l'azione
+      parameters:
+        - $ref: '#/components/parameters/ProposalIdPath'
+      responses:
+        '200':
+          description: Verdetto del Gate
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GateDecision'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/v1/safety/proposals/{proposal_id}/approval:
+    post:
+      tags: [Safety Gate]
+      operationId: submitSafetyApproval
+      summary: Registra approvazione o rifiuto umano, se richiesto
+      description: |
+        L'approvazione umana non supera mai un blocco di sicurezza L0. Un verdetto
+        BLOCKED resta bloccato. Questa API non attiva hardware fisico.
+      parameters:
+        - $ref: '#/components/parameters/ProposalIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HumanApprovalRequest'
+      responses:
+        '200':
+          description: Approvazione registrata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SafetyProposal'
+        '409':
+          description: Stato non compatibile con l'approvazione richiesta
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/simulation/status:
+    get:
+      tags: [Digital Twin]
+      operationId: getSimulationStatus
+      summary: Stato del Digital Twin
+      responses:
+        '200':
+          description: Stato simulazione
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimulationStatus'
+  /api/v1/simulation/start:
+    post:
+      tags: [Digital Twin]
+      operationId: startSimulation
+      summary: Avvia la simulazione
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                speed_multiplier: { type: number, minimum: 0.1, maximum: 100, default: 1 }
+      responses:
+        '200':
+          description: Simulazione avviata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimulationStatus'
+  /api/v1/simulation/stop:
+    post:
+      tags: [Digital Twin]
+      operationId: stopSimulation
+      summary: Arresta l'avanzamento del tempo simulato
+      responses:
+        '200':
+          description: Simulazione arrestata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimulationStatus'
+  /api/v1/simulation/step:
+    post:
+      tags: [Digital Twin]
+      operationId: stepSimulation
+      summary: Avanza manualmente il tempo simulato
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [steps]
+              properties:
+                steps: { type: integer, minimum: 1, maximum: 1000 }
+                simulated_minutes_per_step: { type: integer, minimum: 1, maximum: 1440, default: 5 }
+      responses:
+        '200':
+          description: Simulazione avanzata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimulationStepResult'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/v1/simulation/scenarios:
+    get:
+      tags: [Digital Twin]
+      operationId: listSimulationScenarios
+      summary: Elenca scenari simulabili
+      responses:
+        '200':
+          description: Scenari disponibili
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimulationScenarioList'
+    post:
+      tags: [Digital Twin]
+      operationId: createSimulationScenario
+      summary: Crea o applica uno scenario simulato
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SimulationScenarioRequest'
+      responses:
+        '201':
+          description: Scenario creato
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimulationScenario'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/v1/models:
+    get:
+      tags: [Models and datasets]
+      operationId: listModels
+      summary: Elenca modelli registrati e stato di validazione
+      responses:
+        '200':
+          description: Modelli
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelList'
+  /api/v1/datasets:
+    get:
+      tags: [Models and datasets]
+      operationId: listDatasets
+      summary: Elenca dataset registrati e stato di ingestione
+      responses:
+        '200':
+          description: Dataset
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatasetList'
+
+  /api/v1/devices/sensors:
+    get:
+      tags: [Devices]
+      operationId: listSensors
+      summary: Elenca sensori e stato diagnostico (sola lettura)
+      parameters:
+        - $ref: '#/components/parameters/HubId'
+      responses:
+        '200':
+          description: Sensori
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SensorList'
+  /api/v1/devices/actuators:
+    get:
+      tags: [Devices]
+      operationId: listActuators
+      summary: Elenca attuatori e stato virtuale (sola lettura)
+      description: Questa API non invia comandi agli attuatori.
+      parameters:
+        - $ref: '#/components/parameters/HubId'
+      responses:
+        '200':
+          description: Attuatori
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActuatorList'
+
+  /api/v1/stream/events:
+    get:
+      tags: [Live updates]
+      operationId: streamEvents
+      summary: Stream server-sent events per aggiornamenti live
+      description: |
+        Connessione SSE. Eventi suggeriti: telemetry.updated, event.created,
+        prediction.completed, optimization.completed, orchestrator.updated,
+        safety.proposal.updated, simulation.updated. Il client deve riconnettersi
+        con backoff e usare l'ultimo Event-ID quando supportato.
+      parameters:
+        - $ref: '#/components/parameters/HubId'
+        - name: Last-Event-ID
+          in: header
+          required: false
+          schema: { type: string }
+      responses:
+        '200':
+          description: Stream SSE
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: Eventi SSE nel formato id/event/data
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+components:
+  securitySchemes:
+    LocalBearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Autenticazione proposta per ambienti protetti. In sviluppo locale può essere
+        disabilitata mediante configurazione esplicita; non esporre il servizio in rete
+        senza autenticazione e autorizzazioni.
+  parameters:
+    HubId:
+      name: hub_id
+      in: query
+      required: true
+      schema: { type: string }
+    HubIdPath:
+      name: hub_id
+      in: path
+      required: true
+      schema: { type: string }
+    ZoneIdPath:
+      name: zone_id
+      in: path
+      required: true
+      schema: { type: string }
+    PlantIdPath:
+      name: plant_id
+      in: path
+      required: true
+      schema: { type: string }
+    RunIdPath:
+      name: run_id
+      in: path
+      required: true
+      schema: { type: string }
+    EventIdPath:
+      name: event_id
+      in: path
+      required: true
+      schema: { type: string }
+    ProposalIdPath:
+      name: proposal_id
+      in: path
+      required: true
+      schema: { type: string }
+    From:
+      name: from
+      in: query
+      description: Inizio intervallo ISO 8601 con timezone.
+      schema: { type: string, format: date-time }
+    To:
+      name: to
+      in: query
+      description: Fine intervallo ISO 8601 con timezone.
+      schema: { type: string, format: date-time }
+    Limit:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 500, default: 100 }
+    Cursor:
+      name: cursor
+      in: query
+      schema: { type: string }
+  responses:
+    NotFound:
+      description: Risorsa non trovata
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ApiProblem'
+    ValidationError:
+      description: Dati di richiesta non validi
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ApiProblem'
+    ServiceUnavailable:
+      description: Servizio temporaneamente non disponibile
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ApiProblem'
+  schemas:
+    DataOrigin:
+      type: string
+      enum: [OBSERVED, PREDICTED, SIMULATED, EXTERNAL]
+    QualityStatus:
+      type: string
+      enum: [VALID, SUSPECT, INVALID, STALE, UNKNOWN]
+    Severity:
+      type: string
+      enum: [info, warning, critical]
+    ApiProblem:
+      type: object
+      required: [title, status, detail]
+      properties:
+        type: { type: string, format: uri-reference }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string }
+        code: { type: string }
+        request_id: { type: string }
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field: { type: string }
+              message: { type: string }
+    PageInfo:
+      type: object
+      required: [limit, has_more]
+      properties:
+        limit: { type: integer }
+        next_cursor: { type: [string, 'null'] }
+        has_more: { type: boolean }
+    HealthStatus:
+      type: object
+      required: [status, timestamp]
+      properties:
+        status: { type: string, enum: [ok] }
+        timestamp: { type: string, format: date-time }
+        version: { type: string }
+    ReadinessStatus:
+      type: object
+      required: [status, checks]
+      properties:
+        status: { type: string, enum: [ready, degraded] }
+        checks:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              status: { type: string, enum: [ok, degraded, unavailable] }
+              detail: { type: string }
+    Hub:
+      type: object
+      required: [hub_id, name, status, execution_mode]
+      properties:
+        hub_id: { type: string }
+        name: { type: string }
+        site: { type: [string, 'null'] }
+        timezone: { type: string, default: Europe/Rome }
+        status: { type: string, enum: [online, degraded, offline] }
+        execution_mode: { type: string, enum: [SIMULATION, HARDWARE_DISABLED] }
+        created_at: { type: string, format: date-time }
+    HubList:
+      type: object
+      required: [items, page]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Hub' }
+        page: { $ref: '#/components/schemas/PageInfo' }
+    Zone:
+      type: object
+      required: [zone_id, hub_id, name, status]
+      properties:
+        zone_id: { type: string }
+        hub_id: { type: string }
+        name: { type: string }
+        rack_count: { type: integer, minimum: 0 }
+        status: { type: string, enum: [normal, warning, critical, offline] }
+        crop_profile_id: { type: [string, 'null'] }
+    ZoneList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Zone' }
+    Plant:
+      type: object
+      required: [plant_id, hub_id, zone_id, crop, stage, data_origin]
+      properties:
+        plant_id: { type: string }
+        hub_id: { type: string }
+        zone_id: { type: string }
+        crop: { type: string }
+        cultivar: { type: [string, 'null'] }
+        seeded_at: { type: [string, 'null'], format: date-time }
+        expected_cycle_days: { type: [integer, 'null'], minimum: 1 }
+        stage: { type: string }
+        data_origin: { $ref: '#/components/schemas/DataOrigin' }
+    PlantList:
+      type: object
+      required: [items, page]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Plant' }
+        page: { $ref: '#/components/schemas/PageInfo' }
+    MetricValue:
+      type: object
+      required: [metric, value, unit, timestamp, data_origin, quality]
+      properties:
+        metric: { type: string }
+        value: { type: number }
+        unit: { type: string }
+        timestamp: { type: string, format: date-time }
+        data_origin: { $ref: '#/components/schemas/DataOrigin' }
+        quality: { $ref: '#/components/schemas/QualityStatus' }
+        uncertainty:
+          type: [object, 'null']
+          properties:
+            lower: { type: number }
+            upper: { type: number }
+            confidence_level: { type: number, minimum: 0, maximum: 1 }
+    PlantMetricSeries:
+      type: object
+      required: [plant_id, items]
+      properties:
+        plant_id: { type: string }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/MetricValue' }
+    TelemetryReading:
+      type: object
+      required: [hub_id, zone_id, timestamp, data_origin, quality]
+      properties:
+        hub_id: { type: string }
+        zone_id: { type: string }
+        timestamp: { type: string, format: date-time }
+        data_origin: { $ref: '#/components/schemas/DataOrigin' }
+        quality: { $ref: '#/components/schemas/QualityStatus' }
+        temperature_c: { type: [number, 'null'] }
+        relative_humidity_pct: { type: [number, 'null'] }
+        co2_ppm: { type: [number, 'null'] }
+        vpd_kpa: { type: [number, 'null'] }
+        ppfd_umol_m2_s: { type: [number, 'null'] }
+        dli_mol_m2_day: { type: [number, 'null'] }
+        ec_ms_cm: { type: [number, 'null'] }
+        ph: { type: [number, 'null'] }
+        substrate_moisture_pct: { type: [number, 'null'] }
+        source_device_ids:
+          type: array
+          items: { type: string }
+    TelemetryLatest:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/TelemetryReading' }
+    TelemetryPoint:
+      type: object
+      required: [timestamp, metric, value, unit, data_origin, quality]
+      properties:
+        timestamp: { type: string, format: date-time }
+        hub_id: { type: string }
+        zone_id: { type: string }
+        metric: { type: string }
+        value: { type: number }
+        unit: { type: string }
+        data_origin: { $ref: '#/components/schemas/DataOrigin' }
+        quality: { $ref: '#/components/schemas/QualityStatus' }
+    TelemetrySeries:
+      type: object
+      required: [items, page]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/TelemetryPoint' }
+        page: { $ref: '#/components/schemas/PageInfo' }
+    DashboardOverview:
+      type: object
+      required: [hub, generated_at, data_origin_summary, kpis]
+      properties:
+        hub: { $ref: '#/components/schemas/Hub' }
+        generated_at: { type: string, format: date-time }
+        data_origin_summary:
+          type: object
+          additionalProperties: { type: integer, minimum: 0 }
+        kpis:
+          type: object
+          properties:
+            active_zones: { type: integer }
+            plants_count: { type: integer }
+            open_events: { type: integer }
+            critical_events: { type: integer }
+            energy_cost_estimate_eur: { type: [number, 'null'] }
+            pv_power_kw: { type: [number, 'null'] }
+            harvest_forecast_kg_7d: { type: [number, 'null'] }
+        latest_telemetry:
+          type: array
+          items: { $ref: '#/components/schemas/TelemetryReading' }
+        recent_events:
+          type: array
+          items: { $ref: '#/components/schemas/Event' }
+        subsystem_status:
+          type: object
+          additionalProperties:
+            type: string
+    EnergyOverview:
+      type: object
+      required: [hub_id, timestamp, data_origin]
+      properties:
+        hub_id: { type: string }
+        timestamp: { type: string, format: date-time }
+        data_origin: { $ref: '#/components/schemas/DataOrigin' }
+        load_power_kw: { type: [number, 'null'] }
+        pv_power_kw: { type: [number, 'null'] }
+        grid_import_kw: { type: [number, 'null'] }
+        grid_export_kw: { type: [number, 'null'] }
+        battery_soc_pct: { type: [number, 'null'] }
+        energy_cost_today_eur: { type: [number, 'null'] }
+    EnergyForecastPoint:
+      type: object
+      required: [timestamp, data_origin]
+      properties:
+        timestamp: { type: string, format: date-time }
+        data_origin: { $ref: '#/components/schemas/DataOrigin' }
+        pv_power_kw: { type: [number, 'null'] }
+        load_power_kw: { type: [number, 'null'] }
+        purchase_price_eur_kwh: { type: [number, 'null'] }
+        export_price_eur_kwh: { type: [number, 'null'] }
+    EnergyForecast:
+      type: object
+      required: [hub_id, generated_at, points]
+      properties:
+        hub_id: { type: string }
+        generated_at: { type: string, format: date-time }
+        points:
+          type: array
+          items: { $ref: '#/components/schemas/EnergyForecastPoint' }
+    Prediction:
+      type: object
+      required: [prediction_id, hub_id, target, predicted_value, unit, generated_at, data_origin, quality]
+      properties:
+        prediction_id: { type: string }
+        hub_id: { type: string }
+        plant_id: { type: [string, 'null'] }
+        zone_id: { type: [string, 'null'] }
+        target: { type: string, description: Esempi biomassa_kg, harvest_date, stress_risk. }
+        predicted_value: { oneOf: [{ type: number }, { type: string }] }
+        unit: { type: string }
+        generated_at: { type: string, format: date-time }
+        forecast_for: { type: [string, 'null'], format: date-time }
+        horizon_hours: { type: [integer, 'null'], minimum: 0 }
+        model_id: { type: string }
+        model_version: { type: string }
+        data_origin: { $ref: '#/components/schemas/DataOrigin' }
+        quality: { $ref: '#/components/schemas/QualityStatus' }
+        uncertainty:
+          type: [object, 'null']
+          properties:
+            lower: { type: number }
+            upper: { type: number }
+            confidence_level: { type: number, minimum: 0, maximum: 1 }
+        out_of_distribution: { type: boolean, default: false }
+    PredictionList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Prediction' }
+    PredictionRunSummary:
+      type: object
+      required: [run_id, model_id, model_version, status, started_at]
+      properties:
+        run_id: { type: string }
+        model_id: { type: string }
+        model_version: { type: string }
+        status: { type: string, enum: [queued, running, completed, failed] }
+        started_at: { type: string, format: date-time }
+        completed_at: { type: [string, 'null'], format: date-time }
+    PredictionRunList:
+      type: object
+      required: [items, page]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/PredictionRunSummary' }
+        page: { $ref: '#/components/schemas/PageInfo' }
+    PredictionRun:
+      allOf:
+        - $ref: '#/components/schemas/PredictionRunSummary'
+        - type: object
+          properties:
+            metrics:
+              type: object
+              additionalProperties: { type: number }
+            predictions:
+              type: array
+              items: { $ref: '#/components/schemas/Prediction' }
+            error: { type: [string, 'null'] }
+    EnergyOptimizationRequest:
+      type: object
+      required: [hub_id, horizon_hours, time_step_minutes, objective]
+      properties:
+        hub_id: { type: string }
+        horizon_hours: { type: integer, minimum: 1, maximum: 48, default: 24 }
+        time_step_minutes: { type: integer, enum: [5, 10, 15, 30, 60], default: 60 }
+        objective:
+          type: string
+          enum: [minimize_energy_cost, minimize_grid_import, maximize_pv_self_consumption, balanced]
+        zone_ids:
+          type: array
+          items: { type: string }
+        include_hvac: { type: boolean, default: true }
+        include_leds: { type: boolean, default: true }
+        solver: { type: string, enum: [auto, LP, MILP, QP], default: auto }
+        execution_mode: { type: string, enum: [SIMULATION], default: SIMULATION }
+    OptimizationRunAccepted:
+      type: object
+      required: [run_id, status, accepted_at]
+      properties:
+        run_id: { type: string }
+        status: { type: string, enum: [queued, running] }
+        accepted_at: { type: string, format: date-time }
+        status_url: { type: string }
+    OptimizationRunSummary:
+      type: object
+      required: [run_id, status, created_at]
+      properties:
+        run_id: { type: string }
+        hub_id: { type: string }
+        status: { type: string, enum: [queued, running, completed, infeasible, failed] }
+        created_at: { type: string, format: date-time }
+        completed_at: { type: [string, 'null'], format: date-time }
+    OptimizationRunList:
+      type: object
+      required: [items, page]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/OptimizationRunSummary' }
+        page: { $ref: '#/components/schemas/PageInfo' }
+    OptimizationConstraint:
+      type: object
+      required: [constraint_id, description, status]
+      properties:
+        constraint_id: { type: string }
+        description: { type: string }
+        status: { type: string, enum: [satisfied, active, violated, relaxed] }
+        slack: { type: [number, 'null'] }
+        unit: { type: [string, 'null'] }
+    EnergyPlanPoint:
+      type: object
+      required: [timestamp]
+      properties:
+        timestamp: { type: string, format: date-time }
+        led_power_kw: { type: number, minimum: 0 }
+        hvac_power_kw: { type: number, minimum: 0 }
+        grid_import_kw: { type: number, minimum: 0 }
+        pv_used_kw: { type: number, minimum: 0 }
+        ppfd_umol_m2_s: { type: [number, 'null'] }
+        cumulative_dli_mol_m2_day: { type: [number, 'null'] }
+        energy_price_eur_kwh: { type: [number, 'null'] }
+    EnergyOptimizationRun:
+      allOf:
+        - $ref: '#/components/schemas/OptimizationRunSummary'
+        - type: object
+          required: [solver, objective_value, constraints, plan, data_origin]
+          properties:
+            solver: { type: string }
+            objective_value: { type: [number, 'null'] }
+            objective_unit: { type: string, default: EUR }
+            solve_time_ms: { type: [number, 'null'] }
+            data_origin: { $ref: '#/components/schemas/DataOrigin' }
+            constraints:
+              type: array
+              items: { $ref: '#/components/schemas/OptimizationConstraint' }
+            plan:
+              type: array
+              items: { $ref: '#/components/schemas/EnergyPlanPoint' }
+            proposal_ids:
+              type: array
+              items: { type: string }
+            explanation: { type: [string, 'null'] }
+            error: { type: [string, 'null'] }
+    InventoryItem:
+      type: object
+      required: [inventory_id, crop, quantity_kg, status, data_origin]
+      properties:
+        inventory_id: { type: string }
+        hub_id: { type: string }
+        crop: { type: string }
+        cultivar: { type: [string, 'null'] }
+        quantity_kg: { type: number, minimum: 0 }
+        harvested_at: { type: [string, 'null'], format: date-time }
+        best_before: { type: [string, 'null'], format: date }
+        status: { type: string, enum: [available, reserved, consumed, expired] }
+        data_origin: { $ref: '#/components/schemas/DataOrigin' }
+    InventoryList:
+      type: object
+      required: [items, page]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/InventoryItem' }
+        page: { $ref: '#/components/schemas/PageInfo' }
+    HarvestForecast:
+      type: object
+      required: [forecast_id, crop, expected_date, expected_quantity_kg, data_origin]
+      properties:
+        forecast_id: { type: string }
+        hub_id: { type: string }
+        zone_id: { type: string }
+        crop: { type: string }
+        expected_date: { type: string, format: date }
+        expected_quantity_kg: { type: number, minimum: 0 }
+        lower_quantity_kg: { type: [number, 'null'], minimum: 0 }
+        upper_quantity_kg: { type: [number, 'null'], minimum: 0 }
+        model_id: { type: [string, 'null'] }
+        model_version: { type: [string, 'null'] }
+        data_origin: { $ref: '#/components/schemas/DataOrigin' }
+    HarvestForecastList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/HarvestForecast' }
+    ProductionOverview:
+      type: object
+      required: [hub_id, generated_at]
+      properties:
+        hub_id: { type: string }
+        generated_at: { type: string, format: date-time }
+        available_inventory_kg: { type: number }
+        forecast_harvest_7d_kg: { type: number }
+        reserved_quantity_kg: { type: number }
+        data_origin: { $ref: '#/components/schemas/DataOrigin' }
+    ProductionOptimizationRequest:
+      type: object
+      required: [hub_id, planning_days]
+      properties:
+        hub_id: { type: string }
+        planning_days: { type: integer, minimum: 1, maximum: 28, default: 7 }
+        campus_id: { type: [string, 'null'] }
+        demand_profile_id: { type: [string, 'null'] }
+        objective: { type: string, enum: [minimize_cost, minimize_shortage, balanced], default: balanced }
+    MenuDraftRequest:
+      type: object
+      required: [campus_id, week_start]
+      properties:
+        campus_id: { type: string }
+        week_start: { type: string, format: date }
+        servings_per_day: { type: integer, minimum: 1 }
+        dietary_constraints:
+          type: array
+          items: { type: string }
+        allergen_ruleset_id: { type: [string, 'null'] }
+        source_optimization_run_id: { type: [string, 'null'] }
+    MenuDraftAccepted:
+      type: object
+      required: [run_id, status]
+      properties:
+        run_id: { type: string }
+        status: { type: string, enum: [queued, running] }
+    Menu:
+      type: object
+      required: [menu_id, campus_id, week_start, status, data_origin]
+      properties:
+        menu_id: { type: string }
+        campus_id: { type: string }
+        week_start: { type: string, format: date }
+        status: { type: string, enum: [draft, proposed, approved, rejected] }
+        data_origin: { $ref: '#/components/schemas/DataOrigin' }
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              date: { type: string, format: date }
+              meal: { type: string }
+              recipe_name: { type: string }
+              crop_allocations:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    crop: { type: string }
+                    quantity_kg: { type: number, minimum: 0 }
+              estimated_cost_eur: { type: [number, 'null'] }
+              warnings:
+                type: array
+                items: { type: string }
+    MenuList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Menu' }
+    OrchestratorRequest:
+      type: object
+      required: [hub_id, request_text, mode]
+      properties:
+        hub_id: { type: string }
+        request_text: { type: string, minLength: 1, maxLength: 8000 }
+        mode: { type: string, enum: [DEMO, LLM] }
+        context_refs:
+          type: array
+          items: { type: string }
+        requested_domains:
+          type: array
+          items: { type: string, enum: [biology, climate, energy, production, menu, vision] }
+    OrchestratorRunAccepted:
+      type: object
+      required: [run_id, status, accepted_at]
+      properties:
+        run_id: { type: string }
+        status: { type: string, enum: [queued, running] }
+        accepted_at: { type: string, format: date-time }
+    OrchestratorRunSummary:
+      type: object
+      required: [run_id, status, mode, created_at]
+      properties:
+        run_id: { type: string }
+        status: { type: string, enum: [queued, running, completed, failed, needs_human_review] }
+        mode: { type: string, enum: [DEMO, LLM] }
+        created_at: { type: string, format: date-time }
+    OrchestratorRunList:
+      type: object
+      required: [items, page]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/OrchestratorRunSummary' }
+        page: { $ref: '#/components/schemas/PageInfo' }
+    OrchestratorRun:
+      allOf:
+        - $ref: '#/components/schemas/OrchestratorRunSummary'
+        - type: object
+          properties:
+            request_text: { type: string }
+            summary: { type: [string, 'null'] }
+            services_invoked:
+              type: array
+              items: { type: string }
+            confidence: { type: [number, 'null'], minimum: 0, maximum: 1 }
+            proposals:
+              type: array
+              items: { $ref: '#/components/schemas/SafetyProposal' }
+            trace:
+              type: array
+              items:
+                type: object
+                properties:
+                  timestamp: { type: string, format: date-time }
+                  component: { type: string }
+                  status: { type: string }
+                  message: { type: string }
+            error: { type: [string, 'null'] }
+    Event:
+      type: object
+      required: [event_id, hub_id, type, severity, status, occurred_at, data_origin]
+      properties:
+        event_id: { type: string }
+        hub_id: { type: string }
+        zone_id: { type: [string, 'null'] }
+        plant_id: { type: [string, 'null'] }
+        type: { type: string }
+        title: { type: string }
+        description: { type: string }
+        severity: { $ref: '#/components/schemas/Severity' }
+        status: { type: string, enum: [open, acknowledged, resolved] }
+        occurred_at: { type: string, format: date-time }
+        data_origin: { $ref: '#/components/schemas/DataOrigin' }
+        related_refs:
+          type: array
+          items: { type: string }
+    EventList:
+      type: object
+      required: [items, page]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Event' }
+        page: { $ref: '#/components/schemas/PageInfo' }
+    GateStatus:
+      type: string
+      enum: [PENDING, ALLOWED, BLOCKED, REQUIRES_APPROVAL, EXPIRED]
+    SafetyProposal:
+      type: object
+      required: [proposal_id, hub_id, action_type, parameters, gate_status, created_at]
+      properties:
+        proposal_id: { type: string }
+        hub_id: { type: string }
+        zone_id: { type: [string, 'null'] }
+        source_component: { type: string }
+        action_type: { type: string }
+        parameters: { type: object, additionalProperties: true }
+        gate_status: { $ref: '#/components/schemas/GateStatus' }
+        reasons:
+          type: array
+          items: { type: string }
+        requires_human_approval: { type: boolean }
+        approval_status: { type: string, enum: [not_required, pending, approved, rejected] }
+        created_at: { type: string, format: date-time }
+        expires_at: { type: [string, 'null'], format: date-time }
+        execution_mode: { type: string, enum: [SIMULATION] }
+    SafetyProposalList:
+      type: object
+      required: [items, page]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/SafetyProposal' }
+        page: { $ref: '#/components/schemas/PageInfo' }
+    GateDecision:
+      type: object
+      required: [proposal_id, gate_status, evaluated_at, reasons]
+      properties:
+        proposal_id: { type: string }
+        gate_status: { $ref: '#/components/schemas/GateStatus' }
+        evaluated_at: { type: string, format: date-time }
+        reasons:
+          type: array
+          items: { type: string }
+        checked_constraints:
+          type: array
+          items: { $ref: '#/components/schemas/OptimizationConstraint' }
+    HumanApprovalRequest:
+      type: object
+      required: [actor_id, decision]
+      properties:
+        actor_id: { type: string }
+        decision: { type: string, enum: [approve, reject] }
+        note: { type: string, maxLength: 2000 }
+    SimulationStatus:
+      type: object
+      required: [status, execution_mode, simulated_time, speed_multiplier]
+      properties:
+        status: { type: string, enum: [running, stopped, paused] }
+        execution_mode: { type: string, enum: [SIMULATION] }
+        simulated_time: { type: string, format: date-time }
+        speed_multiplier: { type: number, minimum: 0 }
+        last_step_at: { type: [string, 'null'], format: date-time }
+    SimulationStepResult:
+      type: object
+      required: [status, steps_executed, simulated_time]
+      properties:
+        status: { type: string }
+        steps_executed: { type: integer }
+        simulated_time: { type: string, format: date-time }
+        generated_events:
+          type: array
+          items: { $ref: '#/components/schemas/Event' }
+    SimulationScenarioRequest:
+      type: object
+      required: [hub_id, scenario_type, parameters]
+      properties:
+        hub_id: { type: string }
+        zone_id: { type: [string, 'null'] }
+        scenario_type:
+          type: string
+          enum: [temperature_change, humidity_change, co2_change, lighting_fault, sensor_fault, pv_change, energy_price_change, anomaly_tipburn, anomaly_mold, demand_change, harvest_delay]
+        parameters: { type: object, additionalProperties: true }
+        duration_minutes: { type: integer, minimum: 1, maximum: 10080 }
+    SimulationScenario:
+      allOf:
+        - $ref: '#/components/schemas/SimulationScenarioRequest'
+        - type: object
+          required: [scenario_id, status, data_origin]
+          properties:
+            scenario_id: { type: string }
+            status: { type: string, enum: [scheduled, active, completed, cancelled] }
+            data_origin: { type: string, enum: [SIMULATED] }
+            created_at: { type: string, format: date-time }
+    SimulationScenarioList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/SimulationScenario' }
+    Model:
+      type: object
+      required: [model_id, name, version, task, status]
+      properties:
+        model_id: { type: string }
+        name: { type: string }
+        version: { type: string }
+        task: { type: string }
+        framework: { type: [string, 'null'] }
+        status: { type: string, enum: [registered, training, validated, experimental, deprecated, unavailable] }
+        validation_metrics: { type: object, additionalProperties: { type: number } }
+        dataset_ids:
+          type: array
+          items: { type: string }
+    ModelList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Model' }
+    Dataset:
+      type: object
+      required: [dataset_id, name, status]
+      properties:
+        dataset_id: { type: string }
+        name: { type: string }
+        format: { type: [string, 'null'] }
+        rows: { type: [integer, 'null'] }
+        columns: { type: [integer, 'null'] }
+        status: { type: string, enum: [discovered, profiling, ready, rejected, unavailable] }
+        source_description: { type: [string, 'null'] }
+        last_profiled_at: { type: [string, 'null'], format: date-time }
+    DatasetList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Dataset' }
+    Sensor:
+      type: object
+      required: [sensor_id, hub_id, sensor_type, status]
+      properties:
+        sensor_id: { type: string }
+        hub_id: { type: string }
+        zone_id: { type: [string, 'null'] }
+        sensor_type: { type: string }
+        unit: { type: [string, 'null'] }
+        status: { type: string, enum: [online, stale, fault, offline] }
+        last_seen_at: { type: [string, 'null'], format: date-time }
+        data_origin: { $ref: '#/components/schemas/DataOrigin' }
+    SensorList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Sensor' }
+    Actuator:
+      type: object
+      required: [actuator_id, hub_id, actuator_type, status]
+      properties:
+        actuator_id: { type: string }
+        hub_id: { type: string }
+        zone_id: { type: [string, 'null'] }
+        actuator_type: { type: string }
+        status: { type: string, enum: [available, active, fault, offline, blocked] }
+        current_state: { type: object, additionalProperties: true }
+        execution_mode: { type: string, enum: [SIMULATION] }
+    ActuatorList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Actuator' }
+
+x-frontend-integration-notes:
+  canonical-prefix: /api/v1
+  timestamp-format: RFC3339 with timezone; UTC recommended for storage and transport
+  numeric-units:
+    temperature_c: degC
+    relative_humidity_pct: percent
+    co2_ppm: ppm
+    vpd_kpa: kPa
+    ppfd_umol_m2_s: umol m-2 s-1
+    dli_mol_m2_day: mol m-2 day-1
+    ec_ms_cm: mS cm-1
+    energy_kw: kW
+    energy_kwh: kWh
+    money: EUR
+  data-origin-values: [OBSERVED, PREDICTED, SIMULATED, EXTERNAL]
+  frontend-rule: Il frontend non calcola autonomamente KPI scientifici o decisioni di controllo; visualizza i risultati restituiti dal backend.
+  control-rule: Nessun endpoint di questo contratto consente l'invio diretto di comandi ad hardware fisico.

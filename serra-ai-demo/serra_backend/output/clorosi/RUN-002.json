@@ -1,0 +1,361 @@
+{
+  "id": "RUN-002",
+  "type": "rule_anomaly",
+  "trigger": {
+    "type": "rule_anomaly",
+    "title": "Carenza nutrienti · ZONE_1_LEAFY",
+    "rule_id": "RULE_03_NUTRIENT_CHLOROSIS",
+    "zone_id": "ZONE_1_LEAFY"
+  },
+  "started_at": "2026-11-16T11:45:00+01:00",
+  "model": "mock-llm-1 (emulazione, formato Ollama)",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Sei l'orchestratore L2 della serra verticale \"Campus-Produttore Resiliente CEA - Big Hack 2026\" (Università degli Studi di Napoli Federico II - Campus di Monte Sant'Angelo).\n\nARCHITETTURA\n- Level 0 (Safety Gate): controllo deterministico non-IA. Ha sempre l'ultima parola.\n- Level 1 (Optimizer): pianifica ogni ora LED, HVAC e ventilazione sulle 24 h usando prezzi GME PUN e produzione PVGIS.\n- Level 2 (tu): rilevi anomalie, modifichi i vincoli del Level 1 tramite override, pianifichi raccolti e menu della mensa.\n\nREGOLE DI COMPORTAMENTO\n1. Non comandi mai direttamente gli attuatori: proponi override con il tool submit_proposal. Ogni proposta passa dal Level 0.\n2. Prima di agire verifica i dati: leggi i sensori, controlla l'andamento recente e i parametri ideali della coltura.\n3. Considera sempre il costo energetico: usa get_energy_forecast e confronta i piani con simulate_plan prima di proporre.\n4. Se il Level 0 blocca una proposta, spiega il motivo e riformula entro i limiti. Non tentare di aggirarlo.\n5. Se i dati hanno qualità STALE o INVALID non decidere: avvisa l'operatore con notify_operator.\n6. Per i menu applica la logica FEFO: prima i prodotti che scadono prima.\n\nTABELLA REGOLE DI RIFERIMENTO (puoi andare oltre se la situazione lo richiede)\n[\n {\n  \"rule_id\": \"RULE_01_HUMIDITY_TIPBURN\",\n  \"if_condition\": \"SENS_RH_AIR_PCT > 75.0 OR CV_TIPBURN_RISK > 0.30\",\n  \"diagnosis\": \"Rischio muffa o necrosi marginale (Tipburn) per scarsa traspirazione\",\n  \"solver_override\": {\n   \"rh_max_pct\": 62.0,\n   \"vent_min_m3_h\": 1500.0\n  }\n },\n {\n  \"rule_id\": \"RULE_02_HEAT_WILTING\",\n  \"if_condition\": \"SENS_T_AIR_C > 25.0 OR CV_WILTING_SCORE > 0.25\",\n  \"diagnosis\": \"Stress termico o appassimento fogliare\",\n  \"solver_override\": {\n   \"temp_target_offset_c\": -2.0,\n   \"led_max_power_w\": 20000.0\n  }\n },\n {\n  \"rule_id\": \"RULE_03_NUTRIENT_CHLOROSIS\",\n  \"if_condition\": \"CV_GREENNESS_INDEX < 0.60\",\n  \"diagnosis\": \"Carenza clorofilliana / nutrienti\",\n  \"solver_override\": {\n   \"ec_setpoint_offset_ms_cm\": 0.2,\n   \"ph_setpoint\": 5.8\n  }\n },\n {\n  \"rule_id\": \"RULE_04_ENERGY_PRICE_SPIKE\",\n  \"if_condition\": \"pun_eur_kwh > 0.17 AND pvgis_power_w == 0\",\n  \"diagnosis\": \"Fascia serale ad alto costo elettrico senza fotovoltaico\",\n  \"solver_override\": {\n   \"prefer_dark_window_hours\": [\n    18,\n    19,\n    20,\n    21\n   ]\n  }\n }\n]\n\nFORMATO DELLA RISPOSTA FINALE\nQuando hai finito, rispondi senza chiamare tool con un oggetto JSON:\n{\"diagnosi\": str, \"evidenze\": [str], \"azioni\": [str], \"solver_override\": object|null,\n  \"verdetto_l0\": \"ALLOWED\"|\"CLIPPED\"|\"BLOCKED\"|null, \"confidenza\": float 0-1,\n  \"richiede_umano\": bool, \"messaggio_operatore\": str}\n"
+    },
+    {
+      "role": "user",
+      "content": "Evento dal monitoraggio: una regola della tabella è stata attivata.\n```json\n{\"type\": \"rule_anomaly\", \"rule_id\": \"RULE_03_NUTRIENT_CHLOROSIS\", \"zone_id\": \"ZONE_1_LEAFY\", \"variables\": {\"SENS_T_AIR_C\": 19.7, \"SENS_RH_AIR_PCT\": 65.53, \"SENS_CO2_PPM\": 841.93, \"SENS_PAR_PPFD\": 236.28, \"CV_GREENNESS_INDEX\": 0.59, \"CV_TIPBURN_RISK\": 0.03, \"CV_WILTING_SCORE\": 0.02, \"SENS_SOL_PH\": 6.05, \"SENS_SOL_EC_MS_CM\": 1.19, \"SENS_SOL_TEMP_C\": 19.1, \"SENS_TANK_LVL_L\": 907.7, \"pun_eur_kwh\": 0.088, \"pvgis_power_w\": 21575}}\n```"
+    },
+    {
+      "role": "assistant",
+      "content": "È scattata la regola RULE_03_NUTRIENT_CHLOROSIS (carenza clorofilliana / nutrienti) nella Zona 1 · Foglia (ripiani 1-3). Prima di agire verifico le misure attuali.",
+      "tool_calls": [
+        {
+          "id": "call_1",
+          "type": "function",
+          "function": {
+            "name": "read_sensors",
+            "arguments": {
+              "zone_id": "ZONE_1_LEAFY"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_1",
+      "name": "read_sensors",
+      "content": "{\"zone_id\": \"ZONE_1_LEAFY\", \"at\": \"2026-11-16T11:45:00+01:00\", \"readings\": {\"SENS_T_AIR_C\": 19.7, \"SENS_RH_AIR_PCT\": 65.53, \"SENS_CO2_PPM\": 841.93, \"SENS_PAR_PPFD\": 236.28, \"CV_GREENNESS_INDEX\": 0.59, \"CV_TIPBURN_RISK\": 0.03, \"CV_WILTING_SCORE\": 0.02, \"SENS_SOL_PH\": 6.05, \"SENS_SOL_EC_MS_CM\": 1.19, \"SENS_SOL_TEMP_C\": 19.1, \"SENS_TANK_LVL_L\": 907.7}, \"crops\": [\"lattuga\", \"spinacio\", \"rucola\"], \"quality\": \"VALID\", \"data_origin\": \"SIMULATED\"}"
+    },
+    {
+      "role": "assistant",
+      "content": "Conducibilità (ec) 1.19 mS/cm, indice di verde 0.59. Controllo l'andamento delle ultime 3 ore per capire se è un picco isolato o una tendenza.",
+      "tool_calls": [
+        {
+          "id": "call_2",
+          "type": "function",
+          "function": {
+            "name": "get_sensor_history",
+            "arguments": {
+              "sensor": "SENS_SOL_EC_MS_CM",
+              "zone_id": "ZONE_1_LEAFY",
+              "hours": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_2",
+      "name": "get_sensor_history",
+      "content": "{\"sensor\": \"SENS_SOL_EC_MS_CM\", \"zone_id\": \"ZONE_1_LEAFY\", \"hours\": 3, \"first\": 1.57, \"last\": 1.19, \"min\": 1.19, \"max\": 1.57, \"delta\": -0.37, \"trend\": \"stabile\", \"samples\": 13}"
+    },
+    {
+      "role": "assistant",
+      "content": "Il valore è stabile (da 1.57 a 1.19 mS/cm in 3 ore): il valore è anomalo ma stabile. In questa zona la coltura più sensibile è Spinacio Novello: verifico i suoi parametri ideali.",
+      "tool_calls": [
+        {
+          "id": "call_3",
+          "type": "function",
+          "function": {
+            "name": "get_crop_targets",
+            "arguments": {
+              "crop_id": "spinacio"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_3",
+      "name": "get_crop_targets",
+      "content": "{\"crop_id\": \"spinacio\", \"name\": \"Spinacio Novello\", \"temp_opt_c\": 18.5, \"temp_min_max_c\": [8.0, 26.0], \"rh_min_max_pct\": [60.0, 70.0], \"ppfd_umol_m2_s\": 250.0, \"photoperiod_h\": 14, \"dli_target_mol_m2_d\": 12.6, \"ph_range\": [6.0, 7.0], \"ec_range_ms_cm\": [1.8, 2.3], \"cycle_days\": 25}"
+    },
+    {
+      "role": "assistant",
+      "content": "Confermato: il minimo per Spinacio Novello è 1.8 mS/cm: siamo -0.61 rispetto al minimo. Chiedo al Level 1 di simulare il piano con l'override prima di proporlo.",
+      "tool_calls": [
+        {
+          "id": "call_4",
+          "type": "function",
+          "function": {
+            "name": "simulate_plan",
+            "arguments": {
+              "overrides": {
+                "ec_setpoint_offset_ms_cm": 0.2,
+                "ph_setpoint": 5.8
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_4",
+      "name": "simulate_plan",
+      "content": "{\"overrides\": {\"ec_setpoint_offset_ms_cm\": 0.2, \"ph_setpoint\": 5.8}, \"current\": {\"light_windows\": {\"ZONE_1_LEAFY\": \"00:00 → 16:00\", \"ZONE_2_WARM\": \"00:00 → 16:00\"}, \"dli\": {\"ZONE_1_LEAFY\": \"13.44/12.84\", \"ZONE_2_WARM\": \"16.13/16.13\"}, \"cost_eur_day\": 12.75, \"grid_kwh_day\": 126.31, \"pv_share_pct\": 46.5}, \"proposed\": {\"light_windows\": {\"ZONE_1_LEAFY\": \"00:00 → 16:00\", \"ZONE_2_WARM\": \"00:00 → 16:00\"}, \"dli\": {\"ZONE_1_LEAFY\": \"13.44/12.84\", \"ZONE_2_WARM\": \"16.13/16.13\"}, \"cost_eur_day\": 12.75, \"grid_kwh_day\": 126.31, \"pv_share_pct\": 46.5}, \"delta_cost_eur\": 0.0, \"binding_constraints\": [\"buio minimo obbligatorio 6 h (L0)\"]}"
+    },
+    {
+      "role": "assistant",
+      "content": "Il piano simulato costa +0.00 €/giorno rispetto a quello attuale (12.75 € contro 12.75 €). È un costo contenuto rispetto al rischio di carenza di nutrienti e clorosi. Invio la proposta al Safety Gate L0 per 12 ore.",
+      "tool_calls": [
+        {
+          "id": "call_5",
+          "type": "function",
+          "function": {
+            "name": "submit_proposal",
+            "arguments": {
+              "overrides": {
+                "ec_setpoint_offset_ms_cm": 0.2,
+                "ph_setpoint": 5.8
+              },
+              "duration_h": 12,
+              "rationale": "Carenza clorofilliana / nutrienti: conducibilità (EC) 1.19 mS/cm, indice di verde 0.59"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_5",
+      "name": "submit_proposal",
+      "content": "{\"proposal_id\": \"L0-0001\", \"verdict\": \"ALLOWED\", \"checks\": [{\"param\": \"ph_setpoint\", \"requested\": 5.8, \"limit\": \"5.2–7.2\", \"outcome\": \"OK\", \"reason\": \"Entro i limiti\", \"applied\": null}, {\"param\": \"ec_setpoint_offset_ms_cm\", \"requested\": 0.2, \"limit\": \"EC finale ≤ 3.8\", \"outcome\": \"OK\", \"reason\": \"EC risultante 1.39 mS/cm\", \"applied\": null}], \"applied_overrides\": {\"ec_setpoint_offset_ms_cm\": 0.2, \"ph_setpoint\": 5.8}, \"valid_for_h\": 12, \"new_plan\": {\"light_windows\": {\"ZONE_1_LEAFY\": \"00:00 → 16:00\", \"ZONE_2_WARM\": \"00:00 → 16:00\"}, \"dli\": {\"ZONE_1_LEAFY\": \"13.44/12.84\", \"ZONE_2_WARM\": \"16.13/16.13\"}, \"cost_eur_day\": 12.75, \"grid_kwh_day\": 126.31, \"pv_share_pct\": 46.5}}"
+    },
+    {
+      "role": "assistant",
+      "content": "La proposta è stata approvata dal Level 0 (ALLOWED). Avviso l'operatore così l'intervento resta tracciato.",
+      "tool_calls": [
+        {
+          "id": "call_6",
+          "type": "function",
+          "function": {
+            "name": "notify_operator",
+            "arguments": {
+              "severity": "warning",
+              "message": "Carenza clorofilliana / nutrienti in Zona 1 · Foglia (ripiani 1-3): conducibilità (EC) 1.19 mS/cm. Override applicato per 12 h (L0: ALLOWED)."
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_6",
+      "name": "notify_operator",
+      "content": "{\"event_id\": \"EVT-0003\", \"delivered\": true}"
+    },
+    {
+      "role": "assistant",
+      "content": "{\"diagnosi\": \"Carenza clorofilliana / nutrienti\", \"evidenze\": [\"conducibilità (EC) 1.19 mS/cm (stabile, 1.57→1.19 in 3 h)\", \"indice di verde 0.59\", \"il minimo per Spinacio Novello è 1.8 mS/cm: siamo -0.61 rispetto al minimo\"], \"azioni\": [\"override al Level 1: {\\\"ec_setpoint_offset_ms_cm\\\": 0.2, \\\"ph_setpoint\\\": 5.8}\", \"operatore avvisato\"], \"solver_override\": {\"ec_setpoint_offset_ms_cm\": 0.2, \"ph_setpoint\": 5.8}, \"verdetto_l0\": \"ALLOWED\", \"confidenza\": 0.74, \"richiede_umano\": false, \"messaggio_operatore\": \"Carenza clorofilliana / nutrienti: correzione applicata per 12 h, costo stimato +0.00 €/giorno.\"}",
+      "thinking": "Situazione gestita: l'override è attivo e il Level 1 ha ripianificato."
+    }
+  ],
+  "steps": [
+    {
+      "kind": "trigger",
+      "text": "Evento dal monitoraggio: una regola della tabella è stata attivata."
+    },
+    {
+      "kind": "thought",
+      "text": "È scattata la regola RULE_03_NUTRIENT_CHLOROSIS (carenza clorofilliana / nutrienti) nella Zona 1 · Foglia (ripiani 1-3). Prima di agire verifico le misure attuali."
+    },
+    {
+      "kind": "tool_call",
+      "tool": "read_sensors",
+      "label": "Lettura sensori",
+      "text": "Legge i sensori della Zona 1 · Foglia (ripiani 1-3)",
+      "args": {
+        "zone_id": "ZONE_1_LEAFY"
+      }
+    },
+    {
+      "kind": "tool_result",
+      "tool": "read_sensors",
+      "label": "Lettura sensori",
+      "text": "19.7 °C · umidità 65.53% · CO₂ 842 ppm · pH 6.05 · EC 1.19 · tipburn 0.03 · verde 0.59",
+      "tone": null
+    },
+    {
+      "kind": "thought",
+      "text": "Conducibilità (ec) 1.19 mS/cm, indice di verde 0.59. Controllo l'andamento delle ultime 3 ore per capire se è un picco isolato o una tendenza."
+    },
+    {
+      "kind": "tool_call",
+      "tool": "get_sensor_history",
+      "label": "Andamento storico",
+      "text": "Controlla l'andamento di SENS_SOL_EC_MS_CM nelle ultime 3 ore",
+      "args": {
+        "sensor": "SENS_SOL_EC_MS_CM",
+        "zone_id": "ZONE_1_LEAFY",
+        "hours": 3
+      }
+    },
+    {
+      "kind": "tool_result",
+      "tool": "get_sensor_history",
+      "label": "Andamento storico",
+      "text": "1.57 → 1.19 (stabile, min 1.19, max 1.57)",
+      "tone": null
+    },
+    {
+      "kind": "thought",
+      "text": "Il valore è stabile (da 1.57 a 1.19 mS/cm in 3 ore): il valore è anomalo ma stabile. In questa zona la coltura più sensibile è Spinacio Novello: verifico i suoi parametri ideali."
+    },
+    {
+      "kind": "tool_call",
+      "tool": "get_crop_targets",
+      "label": "Parametri coltura",
+      "text": "Consulta i parametri ideali di Spinacio Novello",
+      "args": {
+        "crop_id": "spinacio"
+      }
+    },
+    {
+      "kind": "tool_result",
+      "tool": "get_crop_targets",
+      "label": "Parametri coltura",
+      "text": "Spinacio Novello: 18.5 °C ottimali, umidità 60–70%, DLI 12.6 mol/m²/d, EC 1.8–2.3",
+      "tone": null
+    },
+    {
+      "kind": "thought",
+      "text": "Confermato: il minimo per Spinacio Novello è 1.8 mS/cm: siamo -0.61 rispetto al minimo. Chiedo al Level 1 di simulare il piano con l'override prima di proporlo."
+    },
+    {
+      "kind": "tool_call",
+      "tool": "simulate_plan",
+      "label": "Simulazione piano L1",
+      "text": "Chiede al Level 1 un piano di prova con EC +0.2 mS/cm, pH 5.8",
+      "args": {
+        "overrides": {
+          "ec_setpoint_offset_ms_cm": 0.2,
+          "ph_setpoint": 5.8
+        }
+      }
+    },
+    {
+      "kind": "tool_result",
+      "tool": "simulate_plan",
+      "label": "Simulazione piano L1",
+      "text": "Costo 12.75 €/giorno (+0.00 €), luce zona 1 00:00 → 16:00, zona 2 00:00 → 16:00",
+      "tone": "good"
+    },
+    {
+      "kind": "thought",
+      "text": "Il piano simulato costa +0.00 €/giorno rispetto a quello attuale (12.75 € contro 12.75 €). È un costo contenuto rispetto al rischio di carenza di nutrienti e clorosi. Invio la proposta al Safety Gate L0 per 12 ore."
+    },
+    {
+      "kind": "tool_call",
+      "tool": "submit_proposal",
+      "label": "Proposta al Safety Gate L0",
+      "text": "Propone al Level 0: EC +0.2 mS/cm, pH 5.8 per 12 h",
+      "args": {
+        "overrides": {
+          "ec_setpoint_offset_ms_cm": 0.2,
+          "ph_setpoint": 5.8
+        },
+        "duration_h": 12,
+        "rationale": "Carenza clorofilliana / nutrienti: conducibilità (EC) 1.19 mS/cm, indice di verde 0.59"
+      }
+    },
+    {
+      "kind": "tool_result",
+      "tool": "submit_proposal",
+      "label": "Proposta al Safety Gate L0",
+      "text": "Verdetto L0: ALLOWED — tutti i controlli superati",
+      "tone": "good"
+    },
+    {
+      "kind": "thought",
+      "text": "La proposta è stata approvata dal Level 0 (ALLOWED). Avviso l'operatore così l'intervento resta tracciato."
+    },
+    {
+      "kind": "tool_call",
+      "tool": "notify_operator",
+      "label": "Avviso operatore",
+      "text": "Avvisa l'operatore: \"Carenza clorofilliana / nutrienti in Zona 1 · Foglia (ripiani 1-3): conducibilità (EC) 1.19 mS/cm. Override applicato per 12 h (L0: ALLOWED).\"",
+      "args": {
+        "severity": "warning",
+        "message": "Carenza clorofilliana / nutrienti in Zona 1 · Foglia (ripiani 1-3): conducibilità (EC) 1.19 mS/cm. Override applicato per 12 h (L0: ALLOWED)."
+      }
+    },
+    {
+      "kind": "tool_result",
+      "tool": "notify_operator",
+      "label": "Avviso operatore",
+      "text": "Avviso EVT-0003 inviato",
+      "tone": null
+    },
+    {
+      "kind": "thought",
+      "text": "Situazione gestita: l'override è attivo e il Level 1 ha ripianificato."
+    },
+    {
+      "kind": "decision",
+      "text": "Carenza clorofilliana / nutrienti: correzione applicata per 12 h, costo stimato +0.00 €/giorno.",
+      "decision": {
+        "diagnosi": "Carenza clorofilliana / nutrienti",
+        "evidenze": [
+          "conducibilità (EC) 1.19 mS/cm (stabile, 1.57→1.19 in 3 h)",
+          "indice di verde 0.59",
+          "il minimo per Spinacio Novello è 1.8 mS/cm: siamo -0.61 rispetto al minimo"
+        ],
+        "azioni": [
+          "override al Level 1: {\"ec_setpoint_offset_ms_cm\": 0.2, \"ph_setpoint\": 5.8}",
+          "operatore avvisato"
+        ],
+        "solver_override": {
+          "ec_setpoint_offset_ms_cm": 0.2,
+          "ph_setpoint": 5.8
+        },
+        "verdetto_l0": "ALLOWED",
+        "confidenza": 0.74,
+        "richiede_umano": false,
+        "messaggio_operatore": "Carenza clorofilliana / nutrienti: correzione applicata per 12 h, costo stimato +0.00 €/giorno."
+      },
+      "tone": "good"
+    }
+  ],
+  "decision": {
+    "diagnosi": "Carenza clorofilliana / nutrienti",
+    "evidenze": [
+      "conducibilità (EC) 1.19 mS/cm (stabile, 1.57→1.19 in 3 h)",
+      "indice di verde 0.59",
+      "il minimo per Spinacio Novello è 1.8 mS/cm: siamo -0.61 rispetto al minimo"
+    ],
+    "azioni": [
+      "override al Level 1: {\"ec_setpoint_offset_ms_cm\": 0.2, \"ph_setpoint\": 5.8}",
+      "operatore avvisato"
+    ],
+    "solver_override": {
+      "ec_setpoint_offset_ms_cm": 0.2,
+      "ph_setpoint": 5.8
+    },
+    "verdetto_l0": "ALLOWED",
+    "confidenza": 0.74,
+    "richiede_umano": false,
+    "messaggio_operatore": "Carenza clorofilliana / nutrienti: correzione applicata per 12 h, costo stimato +0.00 €/giorno."
+  },
+  "error": null,
+  "tokens": 790,
+  "llm_time_ms": 16670,
+  "tool_calls": 6,
+  "data_origin": "SIMULATED"
+}

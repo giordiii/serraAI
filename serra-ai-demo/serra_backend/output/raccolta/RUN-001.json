@@ -1,0 +1,247 @@
+{
+  "id": "RUN-001",
+  "type": "harvest_planning",
+  "trigger": {
+    "type": "harvest_planning",
+    "title": "Pianificazione raccolta e menu",
+    "rule_id": null,
+    "zone_id": null
+  },
+  "started_at": "2026-11-16T05:00:00+01:00",
+  "model": "mock-llm-1 (emulazione, formato Ollama)",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Sei l'orchestratore L2 della serra verticale \"Campus-Produttore Resiliente CEA - Big Hack 2026\" (Università degli Studi di Napoli Federico II - Campus di Monte Sant'Angelo).\n\nARCHITETTURA\n- Level 0 (Safety Gate): controllo deterministico non-IA. Ha sempre l'ultima parola.\n- Level 1 (Optimizer): pianifica ogni ora LED, HVAC e ventilazione sulle 24 h usando prezzi GME PUN e produzione PVGIS.\n- Level 2 (tu): rilevi anomalie, modifichi i vincoli del Level 1 tramite override, pianifichi raccolti e menu della mensa.\n\nREGOLE DI COMPORTAMENTO\n1. Non comandi mai direttamente gli attuatori: proponi override con il tool submit_proposal. Ogni proposta passa dal Level 0.\n2. Prima di agire verifica i dati: leggi i sensori, controlla l'andamento recente e i parametri ideali della coltura.\n3. Considera sempre il costo energetico: usa get_energy_forecast e confronta i piani con simulate_plan prima di proporre.\n4. Se il Level 0 blocca una proposta, spiega il motivo e riformula entro i limiti. Non tentare di aggirarlo.\n5. Se i dati hanno qualità STALE o INVALID non decidere: avvisa l'operatore con notify_operator.\n6. Per i menu applica la logica FEFO: prima i prodotti che scadono prima.\n\nTABELLA REGOLE DI RIFERIMENTO (puoi andare oltre se la situazione lo richiede)\n[\n {\n  \"rule_id\": \"RULE_01_HUMIDITY_TIPBURN\",\n  \"if_condition\": \"SENS_RH_AIR_PCT > 75.0 OR CV_TIPBURN_RISK > 0.30\",\n  \"diagnosis\": \"Rischio muffa o necrosi marginale (Tipburn) per scarsa traspirazione\",\n  \"solver_override\": {\n   \"rh_max_pct\": 62.0,\n   \"vent_min_m3_h\": 1500.0\n  }\n },\n {\n  \"rule_id\": \"RULE_02_HEAT_WILTING\",\n  \"if_condition\": \"SENS_T_AIR_C > 25.0 OR CV_WILTING_SCORE > 0.25\",\n  \"diagnosis\": \"Stress termico o appassimento fogliare\",\n  \"solver_override\": {\n   \"temp_target_offset_c\": -2.0,\n   \"led_max_power_w\": 20000.0\n  }\n },\n {\n  \"rule_id\": \"RULE_03_NUTRIENT_CHLOROSIS\",\n  \"if_condition\": \"CV_GREENNESS_INDEX < 0.60\",\n  \"diagnosis\": \"Carenza clorofilliana / nutrienti\",\n  \"solver_override\": {\n   \"ec_setpoint_offset_ms_cm\": 0.2,\n   \"ph_setpoint\": 5.8\n  }\n },\n {\n  \"rule_id\": \"RULE_04_ENERGY_PRICE_SPIKE\",\n  \"if_condition\": \"pun_eur_kwh > 0.17 AND pvgis_power_w == 0\",\n  \"diagnosis\": \"Fascia serale ad alto costo elettrico senza fotovoltaico\",\n  \"solver_override\": {\n   \"prefer_dark_window_hours\": [\n    18,\n    19,\n    20,\n    21\n   ]\n  }\n }\n]\n\nFORMATO DELLA RISPOSTA FINALE\nQuando hai finito, rispondi senza chiamare tool con un oggetto JSON:\n{\"diagnosi\": str, \"evidenze\": [str], \"azioni\": [str], \"solver_override\": object|null,\n  \"verdetto_l0\": \"ALLOWED\"|\"CLIPPED\"|\"BLOCKED\"|null, \"confidenza\": float 0-1,\n  \"richiede_umano\": bool, \"messaggio_operatore\": str}\n"
+    },
+    {
+      "role": "user",
+      "content": "Pianificazione giornaliera di raccolta e menu della mensa.\n```json\n{\"type\": \"harvest_planning\"}\n```"
+    },
+    {
+      "role": "assistant",
+      "content": "Pianificazione giornaliera: controllo i ripiani pronti nei prossimi 2 giorni e la dispensa.",
+      "tool_calls": [
+        {
+          "id": "call_1",
+          "type": "function",
+          "function": {
+            "name": "get_harvest_forecast",
+            "arguments": {
+              "days": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_1",
+      "name": "get_harvest_forecast",
+      "content": "{\"days\": 2, \"items\": [{\"level\": 3, \"crop_id\": \"rucola\", \"days_to_harvest\": 0, \"edible_kg\": 97.4, \"max_storage_days\": 4, \"status\": \"READY_TODAY\"}], \"inventory\": []}"
+    },
+    {
+      "role": "assistant",
+      "content": "Il ripiano 3 (Rucola Selvatica della Piana) è pronto: circa 97.4 kg commestibili, conservabili 4 giorni. Lo faccio raccogliere oggi.",
+      "tool_calls": [
+        {
+          "id": "call_2",
+          "type": "function",
+          "function": {
+            "name": "schedule_harvest",
+            "arguments": {
+              "level": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_2",
+      "name": "schedule_harvest",
+      "content": "{\"harvested\": {\"id\": \"INV-001\", \"crop_id\": \"rucola\", \"crop_name\": \"Rucola Selvatica della Piana\", \"quantity_kg\": 97.4, \"harvested_at\": \"2026-11-16T05:00:00+01:00\", \"level\": 3, \"expiry\": \"2026-11-20T05:00:00+01:00\", \"value_eur\": 564.92}, \"inventory\": [{\"id\": \"INV-001\", \"crop_id\": \"rucola\", \"kg\": 97.4, \"expiry\": \"2026-11-20\"}]}"
+    },
+    {
+      "role": "assistant",
+      "content": "In dispensa: rucola 97.4 kg. Applico FEFO: rucola scade per primo (2026-11-20). Cerco le ricette della mensa che lo usano.",
+      "tool_calls": [
+        {
+          "id": "call_3",
+          "type": "function",
+          "function": {
+            "name": "draft_menu",
+            "arguments": {
+              "focus_crop": "rucola"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_3",
+      "name": "draft_menu",
+      "content": "{\"stock_kg\": {\"rucola\": 97.4}, \"daily_meals_average\": 271, \"candidates\": [{\"recipe_id\": \"CAMP_05\", \"dish_name\": \"Insalata Fresca Flegrea (Lattuga tenera e Rucola con scaglie di Provolone del Monaco)\", \"course\": \"Contorno Giornaliero Mensa\", \"portions_possible\": 3896, \"missing\": [\"lattuga\"], \"greenhouse_g_per_portion\": {\"lattuga\": 55.0, \"rucola\": 25.0}, \"territorial_link\": \"Copre il fabbisogno quotidiano di IV gamma (~16.5 kg/giorno) azzerando la plastica delle buste\"}, {\"recipe_id\": \"CAMP_03\", \"dish_name\": \"Caprese Campana con Mozzarella, Pomodorini, Rucola selvatica e Origano/Basilico\", \"course\": \"Secondo Piatto Fresco\", \"portions_possible\": 3246, \"missing\": [\"pomodoro\", \"basilico\"], \"greenhouse_g_per_portion\": {\"pomodoro\": 100.0, \"rucola\": 30.0, \"basilico\": 5.0}, \"territorial_link\": \"Abbina i latticini campani agli ortaggi idroponici raccolti in giornata\"}], \"menu\": {\"id\": \"MENU-001\", \"target_date\": \"2026-11-17\", \"recipe_id\": \"CAMP_05\", \"title\": \"Insalata Fresca Flegrea (Lattuga tenera e Rucola con scaglie di Provolone del Monaco)\", \"course\": \"Contorno Giornaliero Mensa\", \"servings\": 271, \"coverage_pct\": 100, \"greenhouse_kg\": {\"rucola\": 6.8}, \"value_eur\": 39.44, \"status\": \"proposed\", \"territorial_link\": \"Copre il fabbisogno quotidiano di IV gamma (~16.5 kg/giorno) azzerando la plastica delle buste\", \"to_buy_kg\": {\"lattuga\": 14.9}}}"
+    },
+    {
+      "role": "assistant",
+      "content": "Ricetta scelta: \"Insalata Fresca Flegrea (Lattuga tenera e Rucola con scaglie di Provolone del Monaco)\" per 271 porzioni (100% dei 271 pasti giornalieri). Chiedo l'approvazione alla mensa.",
+      "tool_calls": [
+        {
+          "id": "call_4",
+          "type": "function",
+          "function": {
+            "name": "notify_operator",
+            "arguments": {
+              "severity": "info",
+              "message": "Menu proposto per 2026-11-17: Insalata Fresca Flegrea (Lattuga tenera e Rucola con scaglie di Provolone del Monaco) (271 porzioni). In attesa di approvazione."
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_4",
+      "name": "notify_operator",
+      "content": "{\"event_id\": \"EVT-0001\", \"delivered\": true}"
+    },
+    {
+      "role": "assistant",
+      "content": "{\"diagnosi\": \"Pianificazione raccolta e menu\", \"evidenze\": [\"raccolti oggi: rucola 97.4 kg\", \"dispensa: {'rucola': 97.4}\"], \"azioni\": [\"menu MENU-001: Insalata Fresca Flegrea (Lattuga tenera e Rucola con scaglie di Provolone del Monaco) (271 porzioni)\"], \"solver_override\": null, \"verdetto_l0\": null, \"confidenza\": 0.88, \"richiede_umano\": true, \"messaggio_operatore\": \"Proposto \\\"Insalata Fresca Flegrea (Lattuga tenera e Rucola con scaglie di Provolone del Monaco)\\\" per 271 porzioni, valore 39.44 €. Serve l'approvazione della mensa.\"}",
+      "thinking": "Pianificazione completata."
+    }
+  ],
+  "steps": [
+    {
+      "kind": "trigger",
+      "text": "Pianificazione giornaliera di raccolta e menu della mensa."
+    },
+    {
+      "kind": "thought",
+      "text": "Pianificazione giornaliera: controllo i ripiani pronti nei prossimi 2 giorni e la dispensa."
+    },
+    {
+      "kind": "tool_call",
+      "tool": "get_harvest_forecast",
+      "label": "Previsione raccolti",
+      "text": "Controlla i raccolti dei prossimi 2 giorni",
+      "args": {
+        "days": 2
+      }
+    },
+    {
+      "kind": "tool_result",
+      "tool": "get_harvest_forecast",
+      "label": "Previsione raccolti",
+      "text": "R3 rucola tra 0 gg (~97.4 kg)",
+      "tone": null
+    },
+    {
+      "kind": "thought",
+      "text": "Il ripiano 3 (Rucola Selvatica della Piana) è pronto: circa 97.4 kg commestibili, conservabili 4 giorni. Lo faccio raccogliere oggi."
+    },
+    {
+      "kind": "tool_call",
+      "tool": "schedule_harvest",
+      "label": "Raccolta",
+      "text": "Raccoglie il ripiano 3",
+      "args": {
+        "level": 3
+      }
+    },
+    {
+      "kind": "tool_result",
+      "tool": "schedule_harvest",
+      "label": "Raccolta",
+      "text": "Raccolti 97.4 kg di rucola (valore 564.92 €), scadenza 2026-11-20",
+      "tone": "good"
+    },
+    {
+      "kind": "thought",
+      "text": "In dispensa: rucola 97.4 kg. Applico FEFO: rucola scade per primo (2026-11-20). Cerco le ricette della mensa che lo usano."
+    },
+    {
+      "kind": "tool_call",
+      "tool": "draft_menu",
+      "label": "Bozza menu",
+      "text": "Cerca ricette della mensa con rucola",
+      "args": {
+        "focus_crop": "rucola"
+      }
+    },
+    {
+      "kind": "tool_result",
+      "tool": "draft_menu",
+      "label": "Bozza menu",
+      "text": "Menu: Insalata Fresca Flegrea (Lattuga tenera e Rucola con scaglie di Provolone del Monaco) — 271 porzioni (100% dei pasti)",
+      "tone": "good"
+    },
+    {
+      "kind": "thought",
+      "text": "Ricetta scelta: \"Insalata Fresca Flegrea (Lattuga tenera e Rucola con scaglie di Provolone del Monaco)\" per 271 porzioni (100% dei 271 pasti giornalieri). Chiedo l'approvazione alla mensa."
+    },
+    {
+      "kind": "tool_call",
+      "tool": "notify_operator",
+      "label": "Avviso operatore",
+      "text": "Avvisa l'operatore: \"Menu proposto per 2026-11-17: Insalata Fresca Flegrea (Lattuga tenera e Rucola con scaglie di Provolone del Monaco) (271 porzioni). In attesa di approvazione.\"",
+      "args": {
+        "severity": "info",
+        "message": "Menu proposto per 2026-11-17: Insalata Fresca Flegrea (Lattuga tenera e Rucola con scaglie di Provolone del Monaco) (271 porzioni). In attesa di approvazione."
+      }
+    },
+    {
+      "kind": "tool_result",
+      "tool": "notify_operator",
+      "label": "Avviso operatore",
+      "text": "Avviso EVT-0001 inviato",
+      "tone": null
+    },
+    {
+      "kind": "thought",
+      "text": "Pianificazione completata."
+    },
+    {
+      "kind": "decision",
+      "text": "Proposto \"Insalata Fresca Flegrea (Lattuga tenera e Rucola con scaglie di Provolone del Monaco)\" per 271 porzioni, valore 39.44 €. Serve l'approvazione della mensa.",
+      "decision": {
+        "diagnosi": "Pianificazione raccolta e menu",
+        "evidenze": [
+          "raccolti oggi: rucola 97.4 kg",
+          "dispensa: {'rucola': 97.4}"
+        ],
+        "azioni": [
+          "menu MENU-001: Insalata Fresca Flegrea (Lattuga tenera e Rucola con scaglie di Provolone del Monaco) (271 porzioni)"
+        ],
+        "solver_override": null,
+        "verdetto_l0": null,
+        "confidenza": 0.88,
+        "richiede_umano": true,
+        "messaggio_operatore": "Proposto \"Insalata Fresca Flegrea (Lattuga tenera e Rucola con scaglie di Provolone del Monaco)\" per 271 porzioni, valore 39.44 €. Serve l'approvazione della mensa."
+      },
+      "tone": "good"
+    }
+  ],
+  "decision": {
+    "diagnosi": "Pianificazione raccolta e menu",
+    "evidenze": [
+      "raccolti oggi: rucola 97.4 kg",
+      "dispensa: {'rucola': 97.4}"
+    ],
+    "azioni": [
+      "menu MENU-001: Insalata Fresca Flegrea (Lattuga tenera e Rucola con scaglie di Provolone del Monaco) (271 porzioni)"
+    ],
+    "solver_override": null,
+    "verdetto_l0": null,
+    "confidenza": 0.88,
+    "richiede_umano": true,
+    "messaggio_operatore": "Proposto \"Insalata Fresca Flegrea (Lattuga tenera e Rucola con scaglie di Provolone del Monaco)\" per 271 porzioni, valore 39.44 €. Serve l'approvazione della mensa."
+  },
+  "error": null,
+  "tokens": 499,
+  "llm_time_ms": 10732,
+  "tool_calls": 4,
+  "data_origin": "SIMULATED"
+}

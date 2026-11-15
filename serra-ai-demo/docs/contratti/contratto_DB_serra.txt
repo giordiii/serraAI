@@ -1,0 +1,80 @@
+SCHEMA DATABASE SERRA VERTICALE (JSON DATA CONTRACT)
+
+STRUTTURA GENERALE E ARCHITETTURA DI CONTROLLO
+Il database e un oggetto JSON radice suddiviso in 8 sezioni principali che alimentano un sistema di controllo CEA (Controlled Environment Agriculture) a 3 livelli[cite: 1]:
+- Level 0 (Safety Gate): livello deterministico non-AI che applica limiti fisici e biologici inviolabili (hard clipping) agli attuatori[cite: 1].
+- Level 1 (Optimizer): solver matematico su orizzonte di 24 ore che pianifica LED, HVAC e ventilazione ottimizzando costi energetici (GME PUN), produzione fotovoltaica (PVGIS) e target agronomici[cite: 1].
+- Level 2 (Orchestrator): agente LLM che rileva anomalie dai sensori, applica override ai vincoli del solver e pianifica i menu della mensa universitaria[cite: 1].
+
+1. metadata (object)
+Contesto geografico e architetturale del sistema[cite: 1]:
+- project_name (string): nome del progetto[cite: 1].
+- site (string): sede dell'impianto[cite: 1].
+- coordinates (object): { lat (float), lon (float), elevation_m (int) }[cite: 1].
+- ai_architecture (map<string, string>): descrizione testuale dei ruoli di level_2_orchestrator, level_1_optimizer e level_0_safety_gate[cite: 1].
+
+2. 1_greenhouse_configuration (object)
+Topologia fisica della serra e zonizzazione climatica[cite: 1]:
+- floor_area_m2 (float), num_levels (int), usable_area_per_level_m2 (float), total_cultivated_area_m2 (float), shelf_height_clearance_m (float), total_air_volume_m3 (float)[cite: 1].
+- zones (array<object>): partizione dei ripiani in microclimi, ciascuno con:
+  - zone_id (string, PK): identificativo univoco della zona climatica[cite: 1].
+  - levels (array<int>): indici dei ripiani appartenenti alla zona[cite: 1].
+  - area_m2 (float): superficie coltivabile totale della zona[cite: 1].
+  - crops_allowed (array<string>, FK -> crop_id): lista delle colture ammesse nella zona[cite: 1].
+
+3. 2_crops_and_storage_catalog (array<object>)
+Anagrafica master delle specie coltivabili, parametri ambientali ideali e conservazione post-raccolta[cite: 1]:
+- crop_id (string, PK): identificativo univoco della coltura[cite: 1].
+- name (string): denominazione commerciale/botanica[cite: 1].
+- zone_id (string, FK -> 1_greenhouse_configuration.zones.zone_id): zona climatica assegnata[cite: 1].
+- density_plants_m2 (int), cycle_days (int), yield_kg_m2 (float), total_shelf_yield_kg (float)[cite: 1].
+- ideal_params (object): target per il Level 1 Optimizer[cite: 1]:
+  - Scalari: temp_opt_c (float), ppfd_umol_m2_s (float), photoperiod_h (int), dli_target_mol_m2_d (float)[cite: 1].
+  - Intervalli [min, max]: temp_min_max_c ([float, float]), rh_min_max_pct ([float, float]), ph_range ([float, float]), ec_range_ms_cm ([float, float])[cite: 1].
+- post_harvest_storage (object): optimal_fridge_temp_c (float), max_storage_days (int), edible_fraction_after_trimming (float in [0, 1])[cite: 1].
+
+4. 3_shelves_initial_state_options (map<string, array<object>>)
+Preset alternativi per inizializzare lo stato dei ripiani (es. partenza da zero vs regime operativo)[cite: 1]. Ogni elemento dell'array rappresenta un ripiano con:
+- level (int): numero del ripiano (da 1 a num_levels)[cite: 1].
+- crop_id (string, FK -> crop_id): coltura attualmente ospitata[cite: 1].
+- day_of_cycle (int): giorni trascorsi dal trapianto[cite: 1].
+- harvestable_biomass_kg (float): biomassa accumulata sul ripiano[cite: 1].
+- days_to_harvest (int): giorni residui alla raccolta[cite: 1].
+- status (enum string): JUST_TRANSPLANTED | GROWING | NEAR_HARVEST | READY_TODAY[cite: 1].
+
+5. 4_sensors_and_actuators_config (object)
+Interfacce di telemetria, limiti hardware di sicurezza e configurazione della funzione obiettivo[cite: 1]:
+- initial_sensor_readings_t0 (map<string, float>): stato iniziale dei sensori fisici (SENS_T_AIR_C, SENS_RH_AIR_PCT, SENS_CO2_PPM, SENS_PAR_PPFD, SENS_SOL_PH, SENS_SOL_EC_MS_CM, SENS_SOL_TEMP_C, SENS_TANK_LVL_L) e metriche da Computer Vision (CV_GREENNESS_INDEX, CV_TIPBURN_RISK, CV_WILTING_SCORE)[cite: 1].
+- actuator_hardware_limits_level0 (object): vincoli hard inviolabili per il Level 0 Safety Gate:
+  - Potenze ed efficienze: led_max_power_w (float), led_efficacy_umol_j (float), hvac_max_heating_w (float), hvac_max_cooling_w (float), hvac_cop (float)[cite: 1].
+  - Portate e limiti chimico-fisici: vent_min_max_m3_h ([float, float]), irrigation_max_l_min (float), co2_max_ppm_cutoff (float), ph_hard_safety_bounds ([float, float]), ec_hard_safety_max_ms_cm (float), mandatory_min_dark_hours (int)[cite: 1].
+- simple_solver_config (object):
+  - horizon_hours (int): orizzonte di ottimizzazione (24 ore)[cite: 1].
+  - weights (object): pesi normalizzati (somma = 1.0) per la funzione di costo: weight_energy_saving (float), weight_climate_comfort (float), weight_light_dli_target (float)[cite: 1].
+
+6. 5_llm_orchestrator_mapping_table (array<object>)
+Tabella regole condizione-azione utilizzata dal Level 2 Orchestrator per reagire alle anomalie[cite: 1]:
+- rule_id (string, PK): codice identificativo della regola[cite: 1].
+- if_condition (string): espressione logica valutata su chiavi sensori (SENS_*, CV_*) o variabili energetiche esterne (pun_eur_kwh, pvgis_power_w)[cite: 1].
+- diagnosis (string): descrizione semantica dell'anomalia rilevata[cite: 1].
+- solver_override (object): patch parziale da applicare ai vincoli/setpoint del Level 1 Solver (puo contenere valori assoluti come rh_max_pct, vent_min_m3_h, led_max_power_w, ph_setpoint; offset relativi come temp_target_offset_c, ec_setpoint_offset_ms_cm; oppure array orari come prefer_dark_window_hours)[cite: 1].
+
+7. 6_verified_naples_public_datasets_costs_and_climate (object)
+Parametri economici (OPEX/ricavi) e serie temporali esterne su 24 ore[cite: 1]:
+- water_tariff_abc_napoli (object): provider (string), reference (string), unit_cost_eur_m3 (float), unit_cost_eur_liter (float), cea_water_use_l_per_kg_yield (float), open_field_campania_benchmark_l_per_kg (float), water_cost_per_kg_yield_eur (float)[cite: 1].
+- agronomic_inputs_cciia_napoli (object): costi variabili non elettrici per kg prodotto (hydroponic_salts_ab_eur_per_kg_yield, seeds_and_biodegradable_plugs_eur_per_kg_yield, co2_enrichment_eur_per_kg_yield, total_non_electric_production_cost_eur_kg - tutti float)[cite: 1].
+- ismea_campania_market_prices_eur_kg (map<crop_id, object>): dizionario indicizzato per crop_id (FK) con prezzi di valorizzazione { wholesale_raw_eur_kg (float), washed_ready_to_eat_canteen_eur_kg (float) }[cite: 1].
+- typical_24h_naples_autumn_profile (map<string, array<float>>): quattro vettori orari di lunghezza pari a horizon_hours (24 elementi, indici 0..23): temp_ext_era5_c, rh_ext_era5_pct, pvgis_25kwp_power_w, gme_pun_eur_kwh[cite: 1].
+
+8. 7_canteen_demand_and_campanian_menu (object)
+Fabbisogno della mensa universitaria e distinta base delle ricette[cite: 1]:
+- Metriche di domanda: canteen_name (string), annual_meals_target (int), active_days_per_year (int), daily_meals_average (int), daily_meals_full_semester (int)[cite: 1].
+- recipes_catalog (array<object>): catalogo piatti della mensa, ciascuno con:
+  - recipe_id (string, PK), dish_name (string), course (string), territorial_link (string)[cite: 1].
+  - greenhouse_ingredients_g_per_portion (map<crop_id, float>): distinta base che associa ogni crop_id (FK) ai grammi richiesti per singola porzione[cite: 1].
+
+VINCOLI DI INTEGRITA E REGOLE OPERATIVE PER IL BACKEND
+1. Integrita referenziale: ogni crop_id usato in zones.crops_allowed, 3_shelves_initial_state_options, ismea_campania_market_prices_eur_kg e recipes_catalog.greenhouse_ingredients_g_per_portion deve esistere in 2_crops_and_storage_catalog[cite: 1].
+2. Vincolo zonale: ogni ripiano in 3_shelves_initial_state_options deve ospitare solo un crop_id presente in crops_allowed della zona che include quel livello[cite: 1].
+3. Allineamento temporale: tutti gli array in typical_24h_naples_autumn_profile devono avere esattamente length == simple_solver_config.horizon_hours[cite: 1].
+4. Gerarchia di sicurezza: qualsiasi comando o override generato dal Level 2 o calcolato dal Level 1 deve sempre essere validato e limitato entro i range definiti in actuator_hardware_limits_level0[cite: 1].
