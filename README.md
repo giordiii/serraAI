@@ -48,7 +48,7 @@ i menu proposti dall'IA, che il personale approva con un clic;
 una chat per fare domande in linguaggio naturale, collegandosi al modello linguistico sottostante.
 L'interfaccia non chiede di fidarsi dell'IA: mostra perché ha deciso.
 
-La nostra simulazione
+La nostra simulazione:
 Per la durata dell'hackathon non disponiamo di una serra fisica, quindi abbiamo costruito un gemello digitale: una serra virtuale alimentata dal nostro database (fatto di dati reali, ma ovviamente non specifici della nostra applicazione), che avanza a passi di 15 minuti simulati. Temperatura, umidità, nutrienti, crescita delle piante ed energia reagiscono in modo plausibile ai comandi, anche se la fisica è volutamente semplificata.
 
 Il backend simulato implementa davvero i tre livelli. L'ottimizzatore cerca la finestra di illuminazione più economica, il Safety Gate applica i limiti reali e l'agente usa undici strumenti che leggono e modificano la serra virtuale. Il ragionamento dell'agente è emulato: segue regole scritte da noi ma usa i numeri veri restituiti dalla simulazione e produce messaggi nello stesso formato di un modello linguistico locale, che si può collegare senza cambiare il resto del sistema.
